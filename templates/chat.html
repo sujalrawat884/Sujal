@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .markdown-content ul {
+            list-style-type: disc;
+        }
+        .markdown-content ol {
+            list-style-type: decimal;
+        }
+        .markdown-content p {
+            margin-bottom: 0.75rem;
+        }
+        .markdown-content strong {
+            font-weight: bold;
+        }
+        .markdown-content em {
+            font-style: italic;
+        }
+        
+        /* Fullscreen mode styles */
+        .fullscreen-mode {
+            width: 100vw !important;
+            height: 100vh !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 9999 !important;
+            margin: 0 !important;
+            padding: 2rem !important;
+            background-color: white !important;
+            overflow-y: auto !important;
+        }
+        
+        .fullscreen-container {
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="absolute top-5 left-5 flex items-center">
+    <a href="/" class="w-12 h-12 rounded-full border-2 border-blue-500 bg-gray-200 flex items-center justify-center text-gray-800 font-semibold hover:scale-110 transition-transform shadow-md">🏠</a>
+    </div>
+    <div class="bg-white shadow-lg rounded-lg w-full max-w-5xl grid grid-cols-1 md:grid-cols-2">
+
+        <!-- Left Section: Chatbot (Always Visible) -->
+        <div class="p-6 border-r flex flex-col" id="chat-section">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800">AI Chatbot</h2>
+                <button id="fullscreen-btn" class="text-gray-600 hover:text-blue-500" onclick="toggleFullscreen()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
+                    </svg>
+                </button>
+            </div>
+            <div class="mt-4 h-80 overflow-y-auto p-4 border rounded bg-gray-50" id="chat-container">
+                <p class="text-gray-500">Start chatting...</p>
+            </div>
+            <div class="flex items-center mt-4 bg-white rounded-lg overflow-hidden border">
+                <!-- Attachment button -->
+                <button id="attach-button" onclick="handleAttachment()" class="p-2 text-gray-600 hover:text-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                </button>
+                
+                <!-- Chat input field -->
+                <input type="text" id="chat-input" class="flex-1 p-2 outline-none" placeholder="Type your message...">
+                
+                <!-- Microphone button -->
+                <button id="mic-button" onclick="toggleMicrophone()" class="p-2 text-gray-600 hover:text-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                </button>
+                
+                <!-- Send button -->
+                <button id="send-btn" class="bg-blue-500 text-white p-2 hover:bg-blue-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Section: Dynamic Content (Notes & YouTube) -->
+        <div class="p-6 flex flex-col items-center">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Resources</h2>
+
+            <!-- Buttons to switch content -->
+            <div class="flex space-x-4">
+                <button onclick="loadNotes()" class="px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition">📚 Notes</button>
+                <button onclick="loadYouTube()" class="px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition">🎥 YouTube</button>
+            </div>
+
+            <!-- Dynamic content area -->
+            <div id="content-area" class="mt-4 w-full p-4 border rounded-lg bg-gray-50 text-center">
+                <p class="text-gray-500">Select an option to display content.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Add this hidden file input -->
+    <input type="file" id="file-upload" accept="image/*" style="display: none;" onchange="processFile(event)">
+
+    <!-- Add this near the bottom before your script tag -->
+    <script>
+        // Pass session data to JavaScript
+        const sessionData = {
+            subject: "{{ user.subject | safe }}",
+            unit: "{{ user.unit | safe }}",
+            unitText: "{{ user.unit | safe }}"  // We'll use just the unit key since we don't have the full text
+        };
+    </script>
+
+    <script src="../static/script.js"></script>
+</body>
+</html>

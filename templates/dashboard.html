@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-md w-96 text-center">
+        <h2 class="text-2xl font-bold text-gray-800">Welcome, {{ user.name }}</h2>
+        <p class="mt-2 text-gray-600">You are logged in successfully.</p>
+        <div class="bg-white p-6 rounded-lg shadow-lg mt-4">
+            <form action="{{ url_for('chat') }}" method="POST" class="mt-4">
+            <label for="year" class="block text-gray-700 font-bold mb-2">Select Year:</label>
+            <select id="year" name="year" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300" required>
+                <option value="1st Year" {% if user.year == "1st Year" %}selected{% endif %}>1st Year</option>
+                <option value="2nd Year" {% if user.year == "2nd Year" %}selected{% endif %}>2nd Year</option>
+                <option value="3rd Year" {% if user.year == "3rd Year" %}selected{% endif %}>3rd Year</option>
+                <option value="4th Year" {% if user.year == "4th Year" %}selected{% endif %}>4th Year</option>
+            </select>  
+            <label for="subject" class="block text-gray-700 font-bold mb-2">Select Subject:</label>
+            <select id="subject" name="subject" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300" required>
+                <option value="">Select Subject</option>
+            </select>
+            <br>
+            <label for="unit" class="block text-gray-700 font-bold mb-2">Select Unit:</label>
+            <select id="unit" name="unit" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300" required>
+                <option value="">Select Unit</option> 
+            </select>
+            <br>
+            <button id="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg w-full" >Submit</button>
+            </form>
+        </div>
+
+         <!-- Profile Icon -->
+         <div class="absolute top-5 right-5 flex items-center">
+            <a href="/profile" 
+                id="Profile"
+                class="w-12 h-12 rounded-full border-2 border-blue-500 bg-gray-200 flex items-center justify-center text-gray-800 font-semibold hover:scale-110 transition-transform shadow-md">
+                {{ user.name[0] | upper }}
+            </a>
+
+            {% if user and not user.year %}
+            <!-- Ribbon-style Profile Completion Warning -->
+            <div class="relative">
+                <div class="absolute top-0 right-0 bg-green-500 text-white w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-md">
+                    ✔
+                </div>
+                <div class="ml-3 bg-orange-500 text-white text-xs px-4 py-2 rounded-md shadow-md relative">
+                    <a href="/profile" class="underline font-semibold">Complete your profile!</a>
+                    <div class="absolute top-1/2 -left-2 w-4 h-4 bg-orange-500 transform -translate-y-1/2 rotate-45"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+<script src="../static/script.js"></script>
+
+</body>
+</html>
