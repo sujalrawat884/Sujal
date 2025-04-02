@@ -360,81 +360,202 @@ function loadYouTube() {
         return;
     }
     
-    // Show loading state
+    // Create search query for the current subject and unit
+    const searchQuery = `${subject} ${unit} aktu one shot`;
+    const encodedQuery = encodeURIComponent(searchQuery);
+    
+    // Create UI with input field for YouTube URL
     document.getElementById("content-area").innerHTML = `
-        <h3 class="text-lg font-bold text-gray-800">YouTube Tutorials</h3>
+        <h3 class="text-lg font-bold text-gray-800">YouTube Tutorials - ${subject}: ${unit}</h3>
         <div class="mt-2 p-4 border rounded bg-white">
-            <div class="flex justify-between items-center mb-3">
-                <div><span class="font-semibold text-gray-700">Subject:</span> ${subject}</div>
-                <div><span class="font-semibold text-gray-700">Unit:</span> ${unit}</div>
-            </div>
-            <div class="mt-4 text-center">
-                <p class="text-gray-600">Loading video...</p>
-                <div class="mt-2 h-4 bg-gray-200 rounded overflow-hidden">
-                    <div class="h-full bg-red-500 animate-pulse w-1/2"></div>
+            <div id="youtube-input-section" class="mb-4">
+                <label class="block text-gray-700 mb-2">Enter YouTube Video URL:</label>
+                <div class="flex">
+                    <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=..." 
+                           class="flex-1 px-3 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="embedYoutubeVideo()" 
+                            class="px-4 py-2 bg-red-600 text-white rounded-r hover:bg-red-700 transition">
+                        Embed Video
+                    </button>
                 </div>
+                <p class="text-xs text-gray-500 mt-1">Paste a YouTube video link to embed it directly</p>
+            </div>
+            
+            <div id="video-container" class="mt-5">
+                <p class="text-center text-gray-600">Enter a YouTube URL above or search for videos</p>
+            </div>
+            
+            <div id="youtube-search-section" class="mt-4 text-center">
+                <p class="text-gray-600">Find more educational videos for this topic:</p>
+                <a href="https://www.youtube.com/results?search_query=${encodedQuery}" 
+                   target="_blank" 
+                   class="mt-2 inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                    Search YouTube for "${searchQuery}"
+                </a>
             </div>
         </div>
+        <button onclick="loadNotes()" class="mt-3 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">← Back to options</button>
     `;
-    
-    // Try to fetch a specific video for this subject and unit
-    fetch(`/get_youtube_url/${subject}/${unit}`)
-        .then(response => response.json())
-        .then(data => {
-            const searchQuery = `${subject} ${unit} aktu one shot `;
-            const encodedQuery = encodeURIComponent(searchQuery);
-            
-            if (data.video_id) {
-                // Video found, embed it AND offer search option
-                document.getElementById("content-area").innerHTML = `
-                    <h3 class="text-lg font-bold text-gray-800">YouTube Tutorial - ${subject}: ${unit}</h3>
-                    <div class="mt-2 p-4 border rounded bg-white">
-                        <iframe class="w-full h-64" src="https://www.youtube.com/embed/${data.video_id}" 
-                                frameborder="0" allowfullscreen></iframe>
-                        <div class="mt-2 text-center">
-                            <a href="${data.url}" target="_blank" class="text-blue-500 hover:underline">
-                                Watch on YouTube
-                            </a>
-                            <p class="mt-3 text-gray-600">Want to explore more videos?</p>
-                            <a href="https://www.youtube.com/results?search_query=${encodedQuery}" 
-                               target="_blank" 
-                               class="mt-2 inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                                Search for more videos
-                            </a>
-                        </div>
-                    </div>
-                    <button onclick="loadNotes()" class="mt-3 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">← Back to options</button>
-                `;
-            } else {
-                // No specific video found, only offer search
-                document.getElementById("content-area").innerHTML = `
-                    <h3 class="text-lg font-bold text-gray-800">YouTube Tutorials - ${subject}: ${unit}</h3>
-                    <div class="mt-2 p-4 border rounded bg-white text-center">
-                        <p class="mb-4 text-gray-600">Find educational videos for this topic:</p>
-                        <a href="https://www.youtube.com/results?search_query=${encodedQuery}" 
-                           target="_blank" 
-                           class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                            Search YouTube for "${searchQuery}"
-                        </a>
-                    </div>
-                    <button onclick="loadNotes()" class="mt-3 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">← Back to options</button>
-                `;
-            }
-        })
-        .catch(error => {
-            // Only in case of actual fetch error
-            document.getElementById("content-area").innerHTML = `
-                <h3 class="text-lg font-bold text-gray-800">YouTube Tutorials</h3>
-                <div class="mt-2 p-4 border rounded bg-white text-center">
-                    <p class="text-red-500">Sorry, there was an error loading videos.</p>
-                    <p class="mt-2 text-gray-600">Please try again later.</p>
-                </div>
-                <button onclick="loadNotes()" class="mt-3 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">← Back to options</button>
-            `;
-        });
 }
 
-// Add these functions at the end of your file
+// Function to extract video ID from YouTube URL and embed it with reduced ads
+function embedYoutubeVideo() {
+    const videoContainer = document.getElementById("video-container");
+    const youtubeUrl = document.getElementById("youtube-url").value.trim();
+    
+    if (!youtubeUrl) {
+        videoContainer.innerHTML = `<p class="text-red-500 text-center">Please enter a YouTube URL</p>`;
+        return;
+    }
+    
+    // Extract video ID from various YouTube URL formats
+    let videoId = null;
+    
+    // Regular expression patterns for different YouTube URL formats
+    const patterns = [
+        // Format: youtube.com/watch?v=VIDEO_ID (standard)
+        /(?:youtube\.com\/watch\?v=)([^&\?\/]+)/,
+        
+        // Format: youtu.be/VIDEO_ID (shortened)
+        /(?:youtu\.be\/)([^&\?\/]+)/,
+        
+        // Format: youtube.com/embed/VIDEO_ID (embedded)
+        /(?:youtube\.com\/embed\/)([^&\?\/]+)/,
+        
+        // Format: youtube.com/shorts/VIDEO_ID (YouTube Shorts)
+        /(?:youtube\.com\/shorts\/)([^&\?\/]+)/,
+        
+        // Format: youtube-nocookie.com/embed/VIDEO_ID (privacy-enhanced)
+        /(?:youtube-nocookie\.com\/embed\/)([^&\?\/]+)/
+    ];
+    
+    // Try each pattern until we find a match
+    for (const pattern of patterns) {
+        const match = youtubeUrl.match(pattern);
+        if (match && match[1]) {
+            videoId = match[1];
+            break;
+        }
+    }
+    
+    if (videoId) {
+        try {
+            // Use youtube-nocookie.com domain for better privacy
+            // Add parameters to reduce ads:
+            const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&cc_load_policy=0&fs=1&playsinline=1`;
+            
+            // Get direct references to sections by ID
+            const inputSection = document.getElementById("youtube-input-section");
+            const searchSection = document.getElementById("youtube-search-section");
+            
+            // If sections don't have IDs, try to find them the old way
+            if (!inputSection) {
+                const tempInput = document.querySelector('#youtube-url').closest('.mb-4');
+                if (tempInput) {
+                    tempInput.id = "youtube-input-section";
+                    tempInput.style.display = 'none';
+                }
+            } else {
+                inputSection.style.display = 'none';
+            }
+            
+            if (!searchSection) {
+                const tempSearch = document.querySelector('.mt-4.text-center');
+                if (tempSearch) {
+                    tempSearch.id = "youtube-search-section";
+                    tempSearch.style.display = 'none';
+                }
+            } else {
+                searchSection.style.display = 'none';
+            }
+            
+            // Replace the video container with the embedded video
+            videoContainer.innerHTML = `
+                <div class="relative pt-1">
+                    <div class="flex mb-2 items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full bg-red-200 text-red-600">
+                                Ad-Reduced Mode
+                            </span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-semibold inline-block text-gray-600">
+                                Enhanced Viewing Experience
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <iframe class="w-full h-96" src="${embedUrl}" 
+                            frameborder="0" allowfullscreen></iframe>
+                </div>
+                <div class="flex justify-between items-center mt-3">
+                    <a href="${youtubeUrl}" target="_blank" class="text-blue-500 hover:underline">
+                        Open on YouTube
+                    </a>
+                    <button onclick="resetYouTubeEmbed()" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">
+                        Embed Another Video
+                    </button>
+                </div>
+            `;
+            
+            // Ensure video container is visible
+            videoContainer.style.display = 'block';
+        } catch (error) {
+            console.error("Error embedding YouTube video:", error);
+            videoContainer.innerHTML = `
+                <p class="text-red-500 text-center">Error embedding video. Please try again.</p>
+            `;
+        }
+    } else {
+        videoContainer.innerHTML = `
+            <p class="text-red-500 text-center mb-2">
+                Invalid YouTube URL. Please use a URL from youtube.com or youtu.be
+            </p>
+            <div class="text-xs text-gray-600 p-2 bg-gray-100 rounded">
+                <p class="font-semibold">Supported URL formats:</p>
+                <ul class="list-disc pl-5 mt-1">
+                    <li>youtube.com/watch?v=VIDEO_ID</li>
+                    <li>youtu.be/VIDEO_ID</li>
+                    <li>youtube.com/embed/VIDEO_ID</li>
+                    <li>youtube.com/shorts/VIDEO_ID</li>
+                </ul>
+            </div>
+        `;
+    }
+}
+
+// Function to reset the YouTube embed section
+function resetYouTubeEmbed() {
+    // Get sections by ID first, fall back to selectors if needed
+    let inputSection = document.getElementById("youtube-input-section");
+    let searchSection = document.getElementById("youtube-search-section");
+    
+    // Fallback to querySelector if IDs aren't found
+    if (!inputSection) {
+        inputSection = document.querySelector('#youtube-url').closest('.mb-4');
+    }
+    
+    if (!searchSection) {
+        searchSection = document.querySelector('.mt-4.text-center');
+    }
+    
+    // Show the sections again
+    if (inputSection) inputSection.style.display = 'block';
+    if (searchSection) inputSection.style.display = 'block';
+    
+    // Clear the current video
+    const videoContainer = document.getElementById('video-container');
+    if (videoContainer) {
+        videoContainer.innerHTML = `
+            <p class="text-center text-gray-600">Enter a YouTube URL above or search for videos</p>
+        `;
+    }
+    
+    // Clear the input field
+    const urlInput = document.getElementById('youtube-url');
+    if (urlInput) urlInput.value = '';
+}
 
 // Handle fullscreen mode
 function toggleFullscreen() {

@@ -54,8 +54,62 @@
             </div>
             {% endif %}
         </div>
+
+        <div class="mt-6 text-center">
+            <button id="openFeedback" class="text-blue-600 hover:text-blue-800 underline text-sm">Report an issue</button>
+        </div>
     </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96 max-w-full relative">
+            <button id="closeFeedback" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Submit Feedback</h3>
+            <form id="feedbackForm" action="{{ url_for('send_feedback') }}" method="POST">
+                <div class="mb-4">
+                    <label for="subject" class="block text-gray-700 font-bold mb-2">Subject:</label>
+                    <input type="text" id="feedbackSubject" name="subject" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300" required>
+                </div>
+                <div class="mb-4">
+                    <label for="message" class="block text-gray-700 font-bold mb-2">Description:</label>
+                    <textarea id="feedbackMessage" name="message" rows="4" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300" required></textarea>
+                </div>
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 font-bold mb-2">Your Email:</label>
+                    <input type="email" id="feedbackEmail" name="email" value="{{ user.email }}" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300 bg-gray-100" readonly required>
+                </div>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg w-full hover:bg-blue-700">Submit Feedback</button>
+            </form>
+        </div>
+    </div>
+
 <script src="../static/script.js"></script>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const openFeedbackBtn = document.getElementById('openFeedback');
+        const closeFeedbackBtn = document.getElementById('closeFeedback');
+        const feedbackModal = document.getElementById('feedbackModal');
+        
+        openFeedbackBtn.addEventListener('click', function() {
+            feedbackModal.classList.remove('hidden');
+        });
+        
+        closeFeedbackBtn.addEventListener('click', function() {
+            feedbackModal.classList.add('hidden');
+        });
+        
+        // Close modal when clicking outside
+        feedbackModal.addEventListener('click', function(e) {
+            if (e.target === feedbackModal) {
+                feedbackModal.classList.add('hidden');
+            }
+        });
+    });
+</script>
 </body>
 </html>

@@ -9,6 +9,10 @@ import resources  # Use this instead of resources
 from resources.resources import get_drive_link  # Import the function to get drive links
 from chatbot.chat import get_chatbot_response
 import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from firebase_admin import auth as firebase_auth
 
 # Load environment variables
 load_dotenv()
@@ -63,7 +67,7 @@ def login():
                 # Authentication successful
                 user_id = response_data['localId']
                 id_token = response_data['idToken']
-
+                
                 # Fetch user details from Firestore
                 user_doc = db.collection("users").document(user_id).get()
                 user_data = user_doc.to_dict() if user_doc.exists else {}
@@ -72,8 +76,8 @@ def login():
                 session['user'] = {
                     'uid': user_id,
                     'email': email,
-                    'name': user_data.get("name", "User"),  # Default to "User" if name is missing
-                    'year': user_data.get("current_year", None)  # Default to None if year is missing
+                    'name': user_data.get("name", "User"),
+                    'year': user_data.get("current_year", None)
                 }
 
                 flash('Login successful!', 'success')
@@ -86,7 +90,7 @@ def login():
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')
 
-    return render_template('login.html')
+    return render_template('login.html', firebase_api_key=FIREBASE_API_KEY)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -97,13 +101,19 @@ def signup():
 
         try:
             # Create user in Firebase Authentication
-            user = auth.create_user(email=email, password=password)
+            user = auth.create_user(
+                email=email,
+                password=password,
+                display_name=name,
+                email_verified=False  # Initially set as unverified
+            )
 
             # Store additional user details in Firestore
             user_data = {
                 "uid": user.uid,
                 "name": name,
-                "email": email
+                "email": email,
+                "email_verified": False
             }
             db.collection("users").document(user.uid).set(user_data)
 
@@ -242,19 +252,19 @@ def get_units(subject):
 #         "message": f"Resource for {resource_type} - {subject} - {unit} would be found at {resource_path}"
 #     })
 
-@app.route('/get_youtube_url/<subject>/<unit>')
-def get_youtube_url(subject, unit):
-    from youtube.youtube import get_youtube_url
-    year = session['user'].get('year', '1Y')  # Default to 1Y if not set
-    subject_code = subject_codes(subject)
-    print(f"year: {year}, subject_code: {subject_code}, unit: {unit}")  # Debugging line
-    url = get_youtube_url(year,subject_code, unit)
-    if url:
-        # Extract video ID for embedding
-        video_id = url.split('v=')[1] if 'v=' in url else None
-        return jsonify({"url": url, "video_id": video_id})
-    else:
-        return jsonify({"error": "Video not found"}), 404
+# @app.route('/get_youtube_url/<subject>/<unit>')
+# def get_youtube_url(subject, unit):
+#     from youtube.youtube import get_youtube_url
+#     year = session['user'].get('year', '1Y')  # Default to 1Y if not set
+#     subject_code = subject_codes(subject)
+#     print(f"year: {year}, subject_code: {subject_code}, unit: {unit}")  # Debugging line
+#     url = get_youtube_url(year,subject_code, unit)
+#     if url:
+#         # Extract video ID for embedding
+#         video_id = url.split('v=')[1] if 'v=' in url else None
+#         return jsonify({"url": url, "video_id": video_id})
+#     else:
+#         return jsonify({"error": "Video not found"}), 404
 
 @app.route('/chat_message', methods=['POST'])
 def chat_message():
@@ -314,6 +324,49 @@ def fetch_drive_link(resource_type, subject, unit):
         return jsonify({"drive_link": drive_link})
     else:
         return jsonify({"error": "Drive link not found"}), 404
+
+@app.route('/send_feedback', methods=['POST'])
+def send_feedback():
+    subject = request.form.get('subject')
+    message = request.form.get('message')
+    user_email = request.form.get('email')
+    
+    # Fix: Use session data instead of current_user
+    user_name = session['user']['name'] if 'user' in session else "Anonymous"
+    
+    # Use same email for both sender and receiver
+    sender_email = os.getenv("EMAIL_ADDRESS")
+    receiver_email = sender_email  # Use the same email as both sender and receiver
+    password = os.getenv("EMAIL_PASSWORD")
+    
+    # Create message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = f"Feedback: {subject}"
+    
+    body = f"""
+    Feedback from: {user_name} ({user_email})
+    
+    {message}
+    """
+    
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        # Connect to server and send email
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, password)
+        server.send_message(msg)
+        server.quit()
+        flash("Thank you for your feedback!", "success")
+    except Exception as e:
+        flash(f"Failed to send feedback: {str(e)}", "error")
+        print(f"Email sending error: {str(e)}")  # Log the error for debugging
+    
+    return redirect(url_for('home'))
+
 
 @app.route('/logout')
 def logout():

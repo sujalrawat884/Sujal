@@ -23,12 +23,32 @@ course_codes = {
     "BCS303": "Discrete Structures & Theory of Logic",
     "BCC301": "Cyber Security",
     "BCC302": "Python Programming",
+    
     # 4th Semester Courses (400 level)
     "BOE404": "Energy Science & Engineering",
     "BVE401": "Universal Human Value and Professional Ethics",
     "BCS401": "Operating System",
     "BCS402": "Theory of Automata and Formal Languages",
-    "BCS403": "Object Oriented Programming with Java"
+    "BCS403": "Object Oriented Programming with Java",
+    
+    # 5th Semester Courses (500 level)
+    "BCS501": "Database Management System",
+    "BCAI501": "Artificial Intelligence",
+    "BCS503": "Design and Analysis of Algorithm",
+    
+    # 6th Semester Courses (600 level)
+    "BCS601": "Software Engineering",
+    "BCAI601": "Machine Learning Techniques",
+    "BCS603": "Computer Networks",
+    
+    # Elective Courses
+    "BCAM061": "Social Media Analytics and Data Analysis",
+    "BCS056": "Application of Soft Computing",
+    "BCS054": "Object Oriented System Design with C++",
+    "BNC501": "Constitution of India",
+    "BOE068": "Software Project Management",
+    "BNC502": "ESSENCE OF INDIAN TRADITIONAL KNOWLEDGE"
+
 }
 
 # Reverse mapping (subject name to code)
