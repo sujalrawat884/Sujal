@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 # Define your Google API keys here
 API_KEYS = [
-    "AIzaSyCxdCrE9ID0t9-uBADq1nj5x4QcPjm45u8",  # Current key from .env
+    "",  # Current key from .env
     "YOUR_SECOND_API_KEY",  # Replace with your second key
     "YOUR_THIRD_API_KEY",   # Replace with your third key
     "YOUR_FOURTH_API_KEY"   # Replace with your fourth key
