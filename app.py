@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, redirect, session, flash, url_for, jsonify
-import firebase_admin
-from firebase_admin import credentials, auth, firestore
 from flask_session import Session
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import os
+from models import db, User
 import Syllabus.sub as sub  # Use this instead of subjects
 import resources  # Use this instead of resources
 from resources.resources import get_drive_link  # Import the function to get drive links
@@ -12,7 +12,6 @@ import requests
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from firebase_admin import auth as firebase_auth
 
 # Load environment variables
 load_dotenv()
@@ -21,18 +20,39 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
+# MySQL Database Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL", "mysql://username:password@localhost/sujal_db")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize database with the app
+db.init_app(app)
+
+# Add this after db.init_app(app)
+
+# Initialize syllabus data
+@app.before_request
+def initialize_syllabus():
+    with app.app_context():
+        sub.subjects_by_year, sub.units_by_subject = sub.load_data_from_db()
+        print("Syllabus data loaded successfully!")
+
+# Add after db.init_app(app)
+
+# Initialize resource data
+@app.before_request
+def initialize_resources():
+    from resources.resources import load_resources_from_db
+    with app.app_context():
+        load_resources_from_db()
+        print("Resource data loaded successfully!")
+
 # Configure session
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-# Initialize Firebase Admin SDK
-cred = credentials.Certificate('firebase-adminsdk.json')
-firebase_admin.initialize_app(cred)
-
-# Initialize Firestore DB
-db = firestore.client()
-
-FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY")  # Add your Firebase API key to your .env file
+# Create database tables
+with app.app_context():
+    db.create_all()
 
 def subject_codes(subject):
     """Extracts the subject code from the subject name if present"""
@@ -53,44 +73,23 @@ def login():
         password = request.form['password']
 
         try:
-            # Use Firebase REST API to authenticate the user
-            url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
-            payload = {
-                "email": email,
-                "password": password,
-                "returnSecureToken": True
-            }
-            response = requests.post(url, json=payload)
-            response_data = response.json()
-
-            if response.status_code == 200:
+            # Find user by email
+            user = User.query.filter_by(email=email).first()
+            
+            if user and user.check_password(password):
                 # Authentication successful
-                user_id = response_data['localId']
-                id_token = response_data['idToken']
-                
-                # Fetch user details from Firestore
-                user_doc = db.collection("users").document(user_id).get()
-                user_data = user_doc.to_dict() if user_doc.exists else {}
-
                 # Store user data in session
-                session['user'] = {
-                    'uid': user_id,
-                    'email': email,
-                    'name': user_data.get("name", "User"),
-                    'year': user_data.get("current_year", None)
-                }
-
+                session['user'] = user.to_session_dict()
                 flash('Login successful!', 'success')
                 return redirect('/')
             else:
                 # Authentication failed
-                error_message = response_data.get('error', {}).get('message', 'Invalid credentials!')
-                flash(f'Error: {error_message}', 'danger')
+                flash('Invalid email or password!', 'danger')
 
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')
 
-    return render_template('login.html', firebase_api_key=FIREBASE_API_KEY)
+    return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -100,26 +99,28 @@ def signup():
         password = request.form['password']
 
         try:
-            # Create user in Firebase Authentication
-            user = auth.create_user(
+            # Check if user already exists
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                flash('Email already registered!', 'danger')
+                return redirect('/signup')
+                
+            # Create new user
+            new_user = User(
+                name=name,
                 email=email,
-                password=password,
-                display_name=name,
-                email_verified=False  # Initially set as unverified
+                email_verified=False
             )
-
-            # Store additional user details in Firestore
-            user_data = {
-                "uid": user.uid,
-                "name": name,
-                "email": email,
-                "email_verified": False
-            }
-            db.collection("users").document(user.uid).set(user_data)
+            new_user.set_password(password)
+            
+            # Add to database
+            db.session.add(new_user)
+            db.session.commit()
 
             flash('Account created! Please login.', 'success')
             return redirect('/login')
         except Exception as e:
+            db.session.rollback()
             flash(f'Error: {str(e)}', 'danger')
 
     return render_template('signup.html')
@@ -130,35 +131,42 @@ def profile():
         return redirect(url_for("login"))  # Redirect if not logged in
 
     user_id = session["user"]["uid"]
+    user = User.query.get(user_id)
+    
+    if not user:
+        flash("User not found!", "danger")
+        session.pop('user', None)
+        return redirect(url_for("login"))
 
     if request.method == "POST":
         # Get form data
-        name = request.form.get("name")
-        roll_no = request.form.get("roll_no")
-        dob = request.form.get("dob")
-        current_year = request.form.get("current_year")
-        branch = request.form.get("branch")
-        college = request.form.get("college")
+        user.name = request.form.get("name")
+        user.roll_no = request.form.get("roll_no")
+        user.dob = request.form.get("dob")
+        user.current_year = request.form.get("current_year")
+        user.branch = request.form.get("branch")
+        user.college = request.form.get("college")
+        
+        # Update password if provided
+        new_password = request.form.get("new_password")
+        if new_password:
+            user.set_password(new_password)
 
-        # Store/update in Firestore
-        user_data = {
-            "name": name,
-            "roll_no": roll_no,
-            "dob": dob,
-            "current_year": current_year,
-            "branch": branch,
-            "college": college
-        }
+        # Save changes to database
+        try:
+            db.session.commit()
+            
+            # Update session data
+            session['user'] = user.to_session_dict()
+            
+            flash("Profile updated successfully!", "success")
+            return redirect(url_for("home"))  # Redirect to dashboard instead
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating profile: {str(e)}", "danger")
+            return redirect(url_for("profile"))
 
-        db.collection("users").document(user_id).set(user_data, merge=True)
-        flash("Profile updated successfully!", "success")
-        return redirect(url_for("profile"))
-
-    # Retrieve user data
-    user_doc = db.collection("users").document(user_id).get()
-    user_data = user_doc.to_dict() if user_doc.exists else {}
-
-    return render_template("profile.html", user=user_data)
+    return render_template("profile.html", user=user)
 
 @app.route('/chat', methods=['GET', 'POST'])
 def chat():
@@ -166,42 +174,34 @@ def chat():
         return redirect(url_for("login"))  # Redirect if not logged in
 
     user_id = session["user"]["uid"]
+    user = User.query.get(user_id)
+    
+    if not user:
+        flash("User not found!", "danger")
+        session.pop('user', None)
+        return redirect(url_for("login"))
 
     if request.method == 'POST':
         # Get all form values
-        year = request.form.get('year')
-        subject = request.form.get('subject')
-        unit = request.form.get('unit')
+        user.current_year = request.form.get('year')
+        user.subject = request.form.get('subject')
+        user.unit = request.form.get('unit')
         
-        # Store/update in Firestore
-        user_data = {
-            'current_year': year,  # Use the same key as in profile
-            'subject': subject,
-            'unit': unit
-        }
-        
-        # Update Firebase
-        db.collection("users").document(user_id).set(user_data, merge=True)
-        
-        # Update session data to maintain values
-        if 'user' in session:
-            session['user']['year'] = year
-            session['user']['subject'] = subject
-            session['user']['unit'] = unit
+        try:
+            # Save to database
+            db.session.commit()
             
-        flash("Selections saved successfully", "success")
+            # Update session data
+            session['user'] = user.to_session_dict()
+            
+            flash("Selections saved successfully", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error saving selections: {str(e)}", "danger")
+            
         return redirect(url_for("chat"))
 
-    # Retrieve user data
-    user_doc = db.collection("users").document(user_id).get()
-    user_data = user_doc.to_dict() if user_doc.exists else {}
-    
-    # Update session with subject and unit if available
-    if 'user' in session and user_data:
-        session['user']['subject'] = user_data.get('subject')
-        session['user']['unit'] = user_data.get('unit')
-
-    return render_template("chat.html", user=user_data)
+    return render_template("chat.html", user=user)
 
 @app.route('/get_subjects_by_year/<year>')
 def get_subjects_by_year(year):

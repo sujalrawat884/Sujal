@@ -3,17 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home</title>
+    <title>StudyBuddy - Your AI Learning Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
-    <div class="text-center">
-        <h1 class="text-4xl font-bold text-gray-800">Welcome to Our App</h1>
-        <p class="mt-4 text-gray-600">A simple login system with Firebase.</p>
-        <div class="mt-6">
-            <a href="/login" class="px-6 py-2 bg-blue-600 text-white rounded-lg mr-4">Login</a>
-            <a href="/signup" class="px-6 py-2 bg-green-600 text-white rounded-lg">Sign Up</a>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <span class="text-blue-600 text-2xl font-bold">StudyBuddy</span>
+            </div>
+            <div class="space-x-4">
+                <a href="/login" class="text-gray-700 hover:text-blue-600 transition">Login</a>
+                <a href="/signup" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Sign Up</a>
+            </div>
         </div>
-    </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+        <div class="container mx-auto px-6 py-16 md:py-24 flex flex-col md:flex-row items-center">
+            <div class="md:w-1/2 text-center md:text-left mb-12 md:mb-0">
+                <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-4">Your Smart Study Assistant</h1>
+                <p class="text-lg md:text-xl mb-8">Access syllabus-integrated AI chat support, notes, previous year questions, and distraction-free YouTube learning—all in one place.</p>
+                <div class="flex flex-col sm:flex-row justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
+                    <a href="/signup" class="bg-white text-blue-600 font-medium px-6 py-3 rounded-lg hover:bg-gray-100 transition text-center">Get Started Free</a>
+                    <a href="#features" class="bg-blue-700 text-white font-medium px-6 py-3 rounded-lg hover:bg-blue-800 transition text-center">Explore Features</a>
+                </div>
+            </div>
+            <div class="md:w-1/2">
+                <img src="../static/img.png" alt="AI Study Assistant" class="rounded-lg shadow-xl">
+            </div>
+        </div>
+    </header>
+
+    <!-- Quote Section -->
+    <section class="bg-gray-50 py-12">
+        <div class="container mx-auto px-6">
+            <div class="bg-white rounded-xl shadow-sm p-8 border-l-4 border-blue-500 italic">
+                <p class="text-xl text-gray-700">"Education is the passport to the future, for tomorrow belongs to those who prepare for it today."</p>
+                <p class="text-gray-500 mt-2">— Malcolm X</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-16 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-12">How StudyBuddy Helps You Excel</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Feature 1 -->
+                <div class="bg-gray-50 rounded-xl p-6 shadow-sm hover:shadow-md transition">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-robot text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">AI Chat Assistant</h3>
+                    <p class="text-gray-600">Get instant answers and explanations aligned with your specific course syllabus.</p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="bg-gray-50 rounded-xl p-6 shadow-sm hover:shadow-md transition">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-book-open text-green-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Comprehensive Notes</h3>
+                    <p class="text-gray-600">Access organized study materials for quick review and better understanding.</p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="bg-gray-50 rounded-xl p-6 shadow-sm hover:shadow-md transition">
+                    <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-question-circle text-yellow-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Previous Year Papers</h3>
+                    <p class="text-gray-600">Practice with past exam questions to build confidence and identify knowledge gaps.</p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="bg-gray-50 rounded-xl p-6 shadow-sm hover:shadow-md transition">
+                    <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fab fa-youtube text-purple-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Ad-Light YouTube</h3>
+                    <p class="text-gray-600">Watch educational content with minimal interruptions for focused learning.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="bg-gradient-to-r from-blue-600 to-indigo-700 py-16">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Ready to Transform Your Learning Experience?</h2>
+            <p class="text-xl text-blue-100 mb-8">Join thousands of students already using StudyBuddy to achieve their academic goals.</p>
+            <div class="flex justify-center space-x-4">
+                <a href="/signup" class="bg-white text-blue-600 font-medium px-8 py-3 rounded-lg hover:bg-gray-100 transition">Sign Up Free</a>
+                <a href="/login" class="bg-blue-800 text-white font-medium px-8 py-3 rounded-lg hover:bg-blue-900 transition">Log In</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-300 py-12">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between">
+                <div class="mb-6 md:mb-0">
+                    <h3 class="text-2xl font-bold text-white mb-4">StudyBuddy</h3>
+                    <p class="max-w-xs">Your AI-powered companion for academic excellence and stress-free learning.</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-8">
+                    <div>
+                        <h4 class="font-bold text-white mb-4">Features</h4>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="hover:text-white transition">AI Chat Assistant</a></li>
+                            <li><a href="#" class="hover:text-white transition">Study Notes</a></li>
+                            <li><a href="#" class="hover:text-white transition">Previous Year Papers</a></li>
+                            <li><a href="#" class="hover:text-white transition">YouTube Player</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white mb-4">Support</h4>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="hover:text-white transition">Help Center</a></li>
+                            <li><a href="#" class="hover:text-white transition">Contact Us</a></li>
+                            <li><a href="#" class="hover:text-white transition">FAQs</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white mb-4">Legal</h4>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="hover:text-white transition">Terms of Service</a></li>
+                            <li><a href="#" class="hover:text-white transition">Privacy Policy</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p>&copy; 2025 StudyBuddy. All rights reserved.</p>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <a href="#" class="hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="hover:text-white transition"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

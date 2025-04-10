@@ -1,7 +1,13 @@
-import csv
 import os
+from dotenv import load_dotenv
+from flask import current_app
+from models import db
+from sqlalchemy.exc import SQLAlchemyError
 
-# Comprehensive dictionary mapping course codes to subject names
+# Load environment variables
+load_dotenv()
+
+# Comprehensive dictionary mapping course codes to subject names (keep as fallback)
 course_codes = {
     "BAS101": "Engineering Physics",
     "BAS102": "Engineering Chemistry",
@@ -52,13 +58,9 @@ course_codes = {
 }
 
 # Reverse mapping (subject name to code)
-# Note: If multiple codes map to the same subject, this will only keep the last one
 subject_to_code = {v: k for k, v in course_codes.items()}
 
-# Base path for syllabus files
-SYLLABUS_BASE_PATH = ".\Syllabus"
-
-# Year mapping for display names and file access
+# Year mapping for display names
 year_display = {
     "1": "1st Year",
     "2": "2nd Year",
@@ -66,80 +68,129 @@ year_display = {
     "4": "4th Year"
 }
 
-# File mapping (which CSV file to use for each year)
-year_to_file = {
-    "1": "1Y.csv",
-    "2": "2Y.csv",
-    "3": "3Y.csv",
-    "4": "4Y.csv"
-}
+# Create SQLAlchemy models
+class Subject(db.Model):
+    __tablename__ = 'subjects'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(15), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    year = db.Column(db.String(10), nullable=False)
+    
+    units = db.relationship('Unit', backref='subject', cascade="all, delete-orphan")
 
-def load_data_from_csv():
+class Unit(db.Model):
+    __tablename__ = 'units'
+    id = db.Column(db.Integer, primary_key=True)
+    subject_code = db.Column(db.String(15), db.ForeignKey('subjects.code'), nullable=False)
+    unit_code = db.Column(db.String(5), nullable=False)
+    topic = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text)
+    learning_objectives = db.Column(db.Text)
+    
+    # Resource links
+    quantum_link = db.Column(db.String(255))
+    detailed_notes_link = db.Column(db.String(255))
+    pyq_link = db.Column(db.String(255))
+    sessional_paper_link = db.Column(db.String(255))
+    
+    __table_args__ = (db.UniqueConstraint('subject_code', 'unit_code'),)
+
+# Cache results to avoid frequent database queries
+_subjects_by_year_cache = None
+_units_by_subject_cache = None
+# Initialize empty data structures - will be populated on first use
+subjects_by_year = {}
+units_by_subject = {}
+
+def load_data_from_db():
     """
-    Load all subject and unit data directly from CSV files
+    Load all subject and unit data from database using SQLAlchemy
     
     Returns:
         subjects_by_year: Dictionary mapping year numbers to lists of subjects
-        units_by_subject: Dictionary mapping subject names to their units with topics
+        units_by_subject: Dictionary mapping subject codes to their units with topics
     """
+    global _subjects_by_year_cache, _units_by_subject_cache
+    
+    # Return cached results if available
+    if _subjects_by_year_cache and _units_by_subject_cache:
+        return _subjects_by_year_cache, _units_by_subject_cache
+    
     subjects_by_year = {
-        "1": set(),
-        "2": set(),
-        "3": set(),
-        "4": set()
+        "1": [],
+        "2": [],
+        "3": [],
+        "4": []
     }
     
-    units_by_subject = {}  # Maps subject names to their units with topics
+    units_by_subject = {}  # Maps subject codes to their units with topics
     
-    # Process each year file
-    for year, filename in year_to_file.items():
-        csv_path = os.path.join(SYLLABUS_BASE_PATH, filename)
-        if os.path.exists(csv_path):
-            try:
-                with open(csv_path, 'r', encoding='windows-1252') as csvfile:
-                    reader = csv.DictReader(csvfile)
-                    for row in reader:
-                        # Get subject name from the CSV
-                        subject = row.get('Subject')
-                        if not subject:
-                            continue
-                            
-                        # Add to the year (use year from CSV or default to file's year)
-                        csv_year = row.get('Year', year).replace('Y', '')  # Convert '2Y' to '2' if needed
-                        if csv_year in subjects_by_year:
-                            subjects_by_year[csv_year].add(subject)
-                        
-                        # Add unit information
-                        unit_code = row.get('Unit')
-                        if unit_code and subject:
-                            if subject not in units_by_subject:
-                                units_by_subject[subject] = {}
-                                
-                            topic = row.get('Topic', f"Topic for {unit_code}")
-                            units_by_subject[subject][unit_code] = {
-                                'topic': topic,
-                                'content': row.get('Content', ''),
-                                'learning_objectives': row.get('Learning_Objectives', '')
-                            }
-            except Exception as e:
-                print(f"Error reading {csv_path}: {e}")
-    
-    # Convert sets to lists for JSON serialization
-    for year in subjects_by_year:
-        subjects_by_year[year] = list(subjects_by_year[year])
-    
-    return subjects_by_year, units_by_subject
+    try:
+        # Use SQLAlchemy to query the database
+        from flask import current_app
+        with current_app.app_context():
+            # Get all subjects
+            subjects = Subject.query.all()
+            
+            # Organize subjects by year
+            for subject in subjects:
+                year = subject.year[0] if isinstance(subject.year, str) and len(subject.year) > 0 else "1"
+                if year in subjects_by_year:
+                    subjects_by_year[year].append(subject.code)
+            
+            # Get all units
+            units = Unit.query.all()
+            
+            # Organize units by subject
+            for unit in units:
+                subject_code = unit.subject_code
+                if subject_code not in units_by_subject:
+                    units_by_subject[subject_code] = {}
+                    
+                units_by_subject[subject_code][unit.unit_code] = {
+                    'topic': unit.topic,
+                    'content': unit.content,
+                    'learning_objectives': unit.learning_objectives
+                }
+            
+            # Cache results
+            _subjects_by_year_cache = subjects_by_year
+            _units_by_subject_cache = units_by_subject
+            
+            return subjects_by_year, units_by_subject
+            
+    except SQLAlchemyError as e:
+        print(f"Database error: {e}")
+        # Fallback to empty structure
+        return subjects_by_year, units_by_subject
+    except RuntimeError as e:
+        print(f"Flask error: {e}")
+        # Fallback when app context is not available
+        return subjects_by_year, units_by_subject
 
-# Load data from CSV files
-subjects_by_year, units_by_subject = load_data_from_csv()
-
-# Helper functions
+# Helper functions using SQLAlchemy instead of direct MySQL
 def get_subject_name(code):
     """Get subject name from course code"""
+    try:
+        subject = Subject.query.filter_by(code=code).first()
+        if subject:
+            return subject.name
+    except Exception as e:
+        print(f"Error retrieving subject name: {e}")
+        
+    # Fallback to dictionary
     return course_codes.get(code, f"Unknown Subject ({code})")
 
 def get_subject_code(name):
     """Get course code from subject name"""
+    try:
+        subject = Subject.query.filter_by(name=name).first()
+        if subject:
+            return subject.code
+    except Exception as e:
+        print(f"Error retrieving subject code: {e}")
+    
+    # Fallback to reverse lookup
     return subject_to_code.get(name, "Unknown")
 
 def get_subjects_by_year(year):
@@ -149,6 +200,11 @@ def get_subjects_by_year(year):
     Args:
         year: Year number (1, 2, 3, 4) or display name (1st Year, 2nd Year)
     """
+    # Make sure data is loaded
+    global subjects_by_year, units_by_subject
+    if not subjects_by_year:
+        subjects_by_year, units_by_subject = load_data_from_db()
+        
     # Convert display name to number if needed
     if year in year_display.values():
         for num, name in year_display.items():
@@ -156,14 +212,15 @@ def get_subjects_by_year(year):
                 year = num
                 break
     
-    # Get subject codes for the given year
-    subject_codes = subjects_by_year.get(str(year), [])
+    year_str = str(year).replace('Y', '')
     
-    # Convert codes to full names using the course_codes dictionary
+    # Get subject codes for the given year
+    subject_codes_list = subjects_by_year.get(year_str, [])
+    
+    # Convert codes to full names with code format
     subject_names_and_codes = []
-    for code in subject_codes:
+    for code in subject_codes_list:
         name = get_subject_name(code)
-        # Add both name and code for display
         subject_names_and_codes.append(f"{name} ({code})")
     
     return subject_names_and_codes
@@ -174,9 +231,12 @@ def get_units_for_subject(subject):
     
     Args:
         subject: Can be subject code, name, or "Name (Code)" format
-        
-    Returns dictionary with format: {"U1": "Topic name"}
     """
+    # Make sure data is loaded
+    global subjects_by_year, units_by_subject
+    if not units_by_subject:
+        subjects_by_year, units_by_subject = load_data_from_db()
+        
     # Extract code if in "Subject Name (Code)" format
     if "(" in subject and ")" in subject:
         subject = subject.split("(")[1].split(")")[0]
@@ -189,13 +249,12 @@ def get_units_for_subject(subject):
         return result
     
     # If not found and it might be a subject name, try to get the code
-    if subject in subject_to_code:
-        code = subject_to_code[subject]
-        if code in units_by_subject:
-            result = {}
-            for unit_code, unit_data in units_by_subject[code].items():
-                result[unit_code] = unit_data['topic']
-            return result
+    code = get_subject_code(subject)
+    if code in units_by_subject:
+        result = {}
+        for unit_code, unit_data in units_by_subject[code].items():
+            result[unit_code] = unit_data['topic']
+        return result
     
     return {}
 
@@ -203,12 +262,21 @@ def get_syllabus_content(subject, unit):
     """
     Get detailed syllabus content for a subject and unit
     """
+    # Make sure data is loaded
+    global subjects_by_year, units_by_subject
+    if not units_by_subject:
+        subjects_by_year, units_by_subject = load_data_from_db()
+        
     # Strip any "Unit " prefix if it exists
     unit_code = unit
     if isinstance(unit, str) and unit.startswith("Unit "):
         unit_num = unit.split(" ")[1]
         unit_code = f"U{unit_num}"
     
+    # Extract subject code if needed
+    if "(" in subject and ")" in subject:
+        subject = subject.split("(")[1].split(")")[0]
+        
     # Get unit data
     if subject in units_by_subject and unit_code in units_by_subject[subject]:
         unit_data = units_by_subject[subject][unit_code]
@@ -216,7 +284,7 @@ def get_syllabus_content(subject, unit):
         # Format the content
         content_parts = []
         
-        if 'topic' in unit_data:
+        if 'topic' in unit_data and unit_data['topic']:
             content_parts.append(f"**Topic:** {unit_data['topic']}")
             
         if 'content' in unit_data and unit_data['content']:
@@ -231,3 +299,11 @@ def get_syllabus_content(subject, unit):
         return "\n\n".join(content_parts)
     
     return f"No syllabus content found for {subject} - {unit}"
+
+def reload_data():
+    """Force reload data from the database"""
+    global _subjects_by_year_cache, _units_by_subject_cache, subjects_by_year, units_by_subject
+    _subjects_by_year_cache = None
+    _units_by_subject_cache = None
+    subjects_by_year, units_by_subject = load_data_from_db()
+    return subjects_by_year, units_by_subject

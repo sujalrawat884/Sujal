@@ -138,13 +138,46 @@ function sendMessage() {
         // Remove typing indicator
         document.getElementById("typing-indicator").remove();
         
-        // Process markdown in the response
-        const formattedResponse = marked.parse(data.response);
+        // Create a container for the bot message with empty content initially
+        let botMessageContainer = document.createElement('div');
+        botMessageContainer.className = "text-left text-gray-600 mt-2";
         
-        // Add bot response with proper HTML rendering
-        let botMessage = `<div class="text-left text-gray-600 mt-2"><strong>Assistant:</strong> <div class="markdown-content">${formattedResponse}</div></div>`;
-        chatContainer.innerHTML += botMessage;
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        // Create header and content container
+        botMessageContainer.innerHTML = `<strong>Assistant:</strong> <div class="markdown-content typing-content"></div>`;
+        chatContainer.appendChild(botMessageContainer);
+        
+        const typingContent = botMessageContainer.querySelector('.typing-content');
+        
+        // Get the raw text response
+        const responseText = data.response;
+        let charIndex = 0;
+        
+        // Typing speed (milliseconds per character)
+        const typingSpeed = 0.1;
+        
+        // Function to type characters one by one
+        function typeNextCharacter() {
+            if (charIndex < responseText.length) {
+                // Get current text and add next character
+                typingContent.textContent = responseText.substring(0, charIndex + 1);
+                charIndex++;
+                
+                // Schedule next character
+                setTimeout(typeNextCharacter, typingSpeed);
+            } else {
+                // Typing finished - now apply markdown formatting
+                typingContent.innerHTML = marked.parse(responseText);
+                
+                // Scroll to bottom
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            // Scroll as we type
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Start typing effect
+        typeNextCharacter();
     })
     .catch(error => {
         // Error handling
@@ -154,61 +187,61 @@ function sendMessage() {
     });
 }
 
-// Handle file attachment
-function handleAttachment() {
-    document.getElementById('file-upload').click();
-}
+// // Handle file attachment
+// function handleAttachment() {
+//     document.getElementById('file-upload').click();
+// }
 
-// Process the selected file
-function processFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+// // Process the selected file
+// function processFile(event) {
+//     const file = event.target.files[0];
+//     if (!file) return;
     
-    // Check if file is an image
-    if (!file.type.match('image.*')) {
-        alert('Please select an image file');
-        return;
-    }
+//     // Check if file is an image
+//     if (!file.type.match('image.*')) {
+//         alert('Please select an image file');
+//         return;
+//     }
     
-    // Display preview of the image
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const chatContainer = document.getElementById("chat-container");
+//     // Display preview of the image
+//     const reader = new FileReader();
+//     reader.onload = function(e) {
+//         const chatContainer = document.getElementById("chat-container");
         
-        // Clear initial placeholder if this is the first message
-        if (chatContainer.querySelector('p.text-gray-500')) {
-            chatContainer.innerHTML = '';
-        }
+//         // Clear initial placeholder if this is the first message
+//         if (chatContainer.querySelector('p.text-gray-500')) {
+//             chatContainer.innerHTML = '';
+//         }
         
-        // Add image message to chat
-        let imageMessage = `
-            <div class="text-right text-blue-600 mt-2">
-                <strong>You:</strong> 
-                <div class="mt-2">
-                    <img src="${e.target.result}" alt="Uploaded image" class="max-w-xs max-h-64 rounded inline-block">
-                </div>
-            </div>
-        `;
-        chatContainer.innerHTML += imageMessage;
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+//         // Add image message to chat
+//         let imageMessage = `
+//             <div class="text-right text-blue-600 mt-2">
+//                 <strong>You:</strong> 
+//                 <div class="mt-2">
+//                     <img src="${e.target.result}" alt="Uploaded image" class="max-w-xs max-h-64 rounded inline-block">
+//                 </div>
+//             </div>
+//         `;
+//         chatContainer.innerHTML += imageMessage;
+//         chatContainer.scrollTop = chatContainer.scrollHeight;
         
-        // TODO: Implement server-side handling of image uploads
-        // For now, just show a response
-        let typingIndicator = `<div id="typing-indicator" class="text-left text-gray-500 mt-2"><em>Assistant is typing...</em></div>`;
-        chatContainer.innerHTML += typingIndicator;
+//         // TODO: Implement server-side handling of image uploads
+//         // For now, just show a response
+//         let typingIndicator = `<div id="typing-indicator" class="text-left text-gray-500 mt-2"><em>Assistant is typing...</em></div>`;
+//         chatContainer.innerHTML += typingIndicator;
         
-        setTimeout(() => {
-            document.getElementById("typing-indicator").remove();
-            let botMessage = `<div class="text-left text-gray-600 mt-2"><strong>Assistant:</strong> I've received your image. However, image processing isn't fully implemented yet.</div>`;
-            chatContainer.innerHTML += botMessage;
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }, 1000);
-    };
-    reader.readAsDataURL(file);
+//         setTimeout(() => {
+//             document.getElementById("typing-indicator").remove();
+//             let botMessage = `<div class="text-left text-gray-600 mt-2"><strong>Assistant:</strong> I've received your image. However, image processing isn't fully implemented yet.</div>`;
+//             chatContainer.innerHTML += botMessage;
+//             chatContainer.scrollTop = chatContainer.scrollHeight;
+//         }, 1000);
+//     };
+//     reader.readAsDataURL(file);
     
-    // Reset the input
-    event.target.value = '';
-}
+//     // Reset the input
+//     event.target.value = '';
+// }
 
 // Handle microphone input
 let recognition;
@@ -314,7 +347,7 @@ function loadResourceContent(resourceType) {
                         <div class="mt-4">
                             <iframe src="${googleDriveLink}" class="w-full h-96 border rounded" allowfullscreen></iframe>
                         </div>
-                        <p class="mt-4 text-sm text-gray-500">Note: If the document doesn't load, ensure the Google Drive file is shared publicly.</p>
+                        <p class="mt-4 text-sm text-gray-500">Note: If the document doesn't load, it will update soon.</p>
                     </div>
                     <button onclick="loadNotes()" class="mt-3 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">← Back to options</button>
                 `;
@@ -322,7 +355,7 @@ function loadResourceContent(resourceType) {
                 document.getElementById("content-area").innerHTML = `
                     <h3 class="text-lg font-bold text-gray-800">${resourceType}</h3>
                     <div class="mt-4 p-4 border rounded bg-white text-center">
-                        <p class="text-red-500">Drive link not found for the selected resource.</p>
+                        <p class="text-blue-500 text-lg font-medium">Coming Soon</p>
                     </div>
                     <button onclick="loadNotes()" class="mt-3 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">← Back to options</button>
                 `;
@@ -333,14 +366,14 @@ function loadResourceContent(resourceType) {
             document.getElementById("content-area").innerHTML = `
                 <h3 class="text-lg font-bold text-gray-800">${resourceType}</h3>
                 <div class="mt-4 p-4 border rounded bg-white text-center">
-                    <p class="text-red-500">An error occurred while fetching the drive link. Please try again later.</p>
+                    <p class="text-blue-500 text-lg font-medium">Coming Soon</p>
                 </div>
                 <button onclick="loadNotes()" class="mt-3 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">← Back to options</button>
             `;
         });
 }
 
-// Load YouTube videos dynamically
+// Updated loadYouTube function with consistent color scheme
 function loadYouTube() {
     // Get subject and unit from session data
     const subject = sessionData.subject;
@@ -352,7 +385,7 @@ function loadYouTube() {
             <div class="mt-4 p-4 border rounded bg-white text-center">
                 <p class="text-orange-500">Please select a subject and unit from the dashboard first.</p>
                 <p class="mt-2 text-gray-600">Your selections will be used to display relevant videos.</p>
-                <a href="/" class="mt-3 inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                <a href="/" class="mt-3 inline-block px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded hover:from-blue-600 hover:to-indigo-700 transition">
                     Go to Dashboard
                 </a>
             </div>
@@ -374,7 +407,7 @@ function loadYouTube() {
                     <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=..." 
                            class="flex-1 px-3 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button onclick="embedYoutubeVideo()" 
-                            class="px-4 py-2 bg-red-600 text-white rounded-r hover:bg-red-700 transition">
+                            class="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-r hover:from-blue-600 hover:to-indigo-700 transition">
                         Embed Video
                     </button>
                 </div>
@@ -389,7 +422,7 @@ function loadYouTube() {
                 <p class="text-gray-600">Find more educational videos for this topic:</p>
                 <a href="https://www.youtube.com/results?search_query=${encodedQuery}" 
                    target="_blank" 
-                   class="mt-2 inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                   class="mt-2 inline-block px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition">
                     Search YouTube for "${searchQuery}"
                 </a>
             </div>

@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Study Assistant</title>
+    <title>StudyBuddy - AI Chat Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+        }
         .markdown-content ul, .markdown-content ol {
             margin-left: 1.5rem;
             margin-top: 0.5rem;
@@ -27,95 +31,232 @@
         .markdown-content em {
             font-style: italic;
         }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: bold;
+        }
+        .markdown-content h1 {
+            font-size: 1.5rem;
+        }
+        .markdown-content h2 {
+            font-size: 1.3rem;
+        }
+        .markdown-content h3 {
+            font-size: 1.1rem;
+        }
+        .markdown-content pre {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .markdown-content code {
+            font-family: monospace;
+            background-color: #f3f4f6;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.9rem;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1rem;
+            color: #6b7280;
+            margin: 1rem 0;
+        }
         
-        /* Fullscreen mode styles */
+        /* Message bubble animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-bubble {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        /* Button hover effects */
+        .btn-hover {
+            transition: all 0.2s ease;
+        }
+        .btn-hover:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Improved fullscreen mode styles */
         .fullscreen-mode {
-            width: 100vw !important;
-            height: 100vh !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            padding: 2rem !important;
+            background-color: white !important;
+            overflow-y: auto !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .fullscreen-mode #chat-container {
+            height: calc(100vh - 180px) !important;
+            max-height: none !important;
+        }
+    </style>
+    <style>
+        /* Keep just the basic styling for fullscreen mode */
+        .fullscreen-mode {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
             z-index: 9999 !important;
             margin: 0 !important;
             padding: 2rem !important;
             background-color: white !important;
             overflow-y: auto !important;
         }
-        
-        .fullscreen-container {
-            max-width: 100% !important;
-            width: 100% !important;
-        }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-    <div class="absolute top-5 left-5 flex items-center">
-    <a href="/" class="w-12 h-12 rounded-full border-2 border-blue-500 bg-gray-200 flex items-center justify-center text-gray-800 font-semibold hover:scale-110 transition-transform shadow-md">🏠</a>
-    </div>
-    <div class="bg-white shadow-lg rounded-lg w-full max-w-5xl grid grid-cols-1 md:grid-cols-2">
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-sm sticky top-0 z-20">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="{{ url_for('home') }}" class="flex items-center">
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-600 text-2xl font-bold">StudyBuddy</span>
+            </a>
+            <div class="flex items-center space-x-4">
+                <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                    {{ user.subject }} • {{ user.unit }}
+                </span>
+                <a href="{{ url_for('home') }}" class="text-gray-700 hover:text-blue-600 transition">
+                    <i class="fas fa-home mr-1"></i> Dashboard
+                </a>
+                <a href="/profile" class="w-10 h-10 rounded-full border-2 border-blue-500 bg-gray-200 flex items-center justify-center text-gray-800 font-semibold hover:scale-110 transition-transform shadow-sm">
+                    {{ user.name[0] | upper }}
+                </a>
+            </div>
+        </div>
+    </nav>
 
-        <!-- Left Section: Chatbot (Always Visible) -->
-        <div class="p-6 border-r flex flex-col" id="chat-section">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">AI Chatbot</h2>
-                <button id="fullscreen-btn" class="text-gray-600 hover:text-blue-500" onclick="toggleFullscreen()">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
-                    </svg>
-                </button>
+    <div class="container mx-auto p-4 mt-4">
+        <!-- Changed from grid-cols-3 with col-span-2 to grid-cols-2 for equal sizing -->
+        <div class="bg-white shadow-lg rounded-xl overflow-hidden w-full grid grid-cols-1 lg:grid-cols-2">
+            <!-- Left Section: Chatbot (no longer using col-span-2) -->
+            <div class="p-6 flex flex-col h-[600px]" id="chat-section">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center text-white shadow-md">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-800 ml-3">AI Study Assistant</h2>
+                    </div>
+                    <!-- Replace your existing fullscreen button with this -->
+                    <button id="fullscreen-btn" class="text-gray-600 hover:text-blue-500 p-2 rounded-full hover:bg-blue-50 btn-hover" title="Toggle fullscreen">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Chat history -->
+                <div class="flex-1 overflow-y-auto p-4 border rounded-lg bg-gray-50" id="chat-container">
+                    <div class="flex items-start mb-4 message-bubble">
+                        <div class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center text-white shadow-sm mr-2">
+                            <i class="fas fa-robot text-sm"></i>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg rounded-tl-none max-w-3xl shadow-sm">
+                            <p class="text-gray-700">Hello! I'm your AI study assistant for <strong>{{ user.subject }}</strong>. 
+                            How can I help you with <strong>{{ user.unit }}</strong> today?</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat input area -->
+                <div class="mt-4 flex items-center bg-white rounded-lg overflow-hidden border shadow-sm">
+                    <!-- Attachment button -->
+                    <button id="attach-button" onclick="handleAttachment()" class="p-3 text-gray-600 hover:text-blue-500 hover:bg-gray-100">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    
+                    <!-- Chat input field -->
+                    <input type="text" id="chat-input" class="flex-1 p-3 outline-none" placeholder="Type your question here...">
+                    
+                    <!-- Microphone button -->
+                    <button id="mic-button" onclick="toggleMicrophone()" class="p-3 text-gray-600 hover:text-blue-500 hover:bg-gray-100">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    
+                    <!-- Send button -->
+                    <button id="send-btn" class="gradient-bg text-white p-3 px-5 hover:opacity-90">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
             </div>
-            <div class="mt-4 h-80 overflow-y-auto p-4 border rounded bg-gray-50" id="chat-container">
-                <p class="text-gray-500">Start chatting...</p>
+
+            <!-- Right Section: Resources -->
+            <div class="p-6 border-l border-gray-200 flex flex-col h-[600px]">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-md">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-800 ml-3">Resources</h2>
+                    </div>
+                </div>
+
+                <!-- Resource tabs -->
+                <div class="bg-gray-100 p-1 rounded-lg flex mb-4">
+                    <button onclick="loadNotes()" class="flex-1 py-2 rounded-md btn-hover flex items-center justify-center" id="notes-tab">
+                        <i class="fas fa-book-open mr-2"></i> Notes
+                    </button>
+                    <button onclick="loadYouTube()" class="flex-1 py-2 rounded-md btn-hover flex items-center justify-center" id="youtube-tab">
+                        <i class="fab fa-youtube mr-2"></i> YouTube
+                    </button>
+                </div>
+
+                <!-- Dynamic content area -->
+                <div id="content-area" class="flex-1 w-full p-4 border rounded-lg bg-gray-50 overflow-y-auto">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <div class="bg-blue-100 p-4 rounded-full mb-4">
+                            <i class="fas fa-lightbulb text-blue-500 text-3xl"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-700 mb-2">Study Resources</h3>
+                        <p class="text-gray-500 text-center">Select an option above to view study materials or educational videos.</p>
+                    </div>
+                </div>
             </div>
-            <div class="flex items-center mt-4 bg-white rounded-lg overflow-hidden border">
-                <!-- Attachment button -->
-                <button id="attach-button" onclick="handleAttachment()" class="p-2 text-gray-600 hover:text-blue-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                    </svg>
+        </div>
+        
+        <!-- Suggested questions -->
+        <div class="mt-6 bg-white p-4 rounded-xl shadow-md">
+            <h3 class="text-lg font-bold text-gray-800 mb-3">Suggested Questions:</h3>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="askSuggested('Can you explain the key concepts of {{ user.unit }}?')" 
+                    class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 btn-hover">
+                    Explain key concepts
                 </button>
-                
-                <!-- Chat input field -->
-                <input type="text" id="chat-input" class="flex-1 p-2 outline-none" placeholder="Type your message...">
-                
-                <!-- Microphone button -->
-                <button id="mic-button" onclick="toggleMicrophone()" class="p-2 text-gray-600 hover:text-blue-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
+                <button onclick="askSuggested('Provide examples related to {{ user.unit }}')" 
+                    class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 btn-hover">
+                    Provide examples
                 </button>
-                
-                <!-- Send button -->
-                <button id="send-btn" class="bg-blue-500 text-white p-2 hover:bg-blue-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
+                <button onclick="askSuggested('What are common exam questions about {{ user.unit }}?')" 
+                    class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 btn-hover">
+                    Common exam questions
+                </button>
+                <button onclick="askSuggested('How does {{ user.unit }} relate to other topics?')" 
+                    class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 btn-hover">
+                    Relation to other topics
                 </button>
             </div>
         </div>
-
-        <!-- Right Section: Dynamic Content (Notes & YouTube) -->
-        <div class="p-6 flex flex-col items-center">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">Resources</h2>
-
-            <!-- Buttons to switch content -->
-            <div class="flex space-x-4">
-                <button onclick="loadNotes()" class="px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition">📚 Notes</button>
-                <button onclick="loadYouTube()" class="px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition">🎥 YouTube</button>
-            </div>
-
-            <!-- Dynamic content area -->
-            <div id="content-area" class="mt-4 w-full p-4 border rounded-lg bg-gray-50 text-center">
-                <p class="text-gray-500">Select an option to display content.</p>
-            </div>
-        </div>
-
     </div>
 
     <!-- Add this hidden file input -->
     <input type="file" id="file-upload" accept="image/*" style="display: none;" onchange="processFile(event)">
 
-    <!-- Add this near the bottom before your script tag -->
     <script>
         // Pass session data to JavaScript
         const sessionData = {
@@ -123,8 +264,73 @@
             unit: "{{ user.unit | safe }}",
             unitText: "{{ user.unit | safe }}"  // We'll use just the unit key since we don't have the full text
         };
+        
+        // Function to activate tab styling
+        function activateTab(tabId) {
+            document.getElementById('notes-tab').classList.remove('bg-green-500', 'text-white');
+            document.getElementById('youtube-tab').classList.remove('bg-red-500', 'text-white');
+            
+            if (tabId === 'notes-tab') {
+                document.getElementById('notes-tab').classList.add('bg-green-500', 'text-white');
+            } else {
+                document.getElementById('youtube-tab').classList.add('bg-red-500', 'text-white');
+            }
+        }
+        
+        // Function to ask a suggested question
+        function askSuggested(question) {
+            document.getElementById('chat-input').value = question;
+            // Assuming your send button click handler is attached properly
+            document.getElementById('send-btn').click();
+        }
+    
+        // Make sure to call this function when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("Setting up fullscreen toggle...");
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            
+            if (fullscreenBtn) {
+                console.log("Found fullscreen button, attaching event");
+                fullscreenBtn.onclick = function(e) {
+                    e.preventDefault();
+                    toggleFullscreen();
+                };
+            } else {
+                console.error("Fullscreen button not found!");
+            }
+            
+            // Also add an escape key handler
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && isFullscreen) {
+                    console.log("Escape key pressed, exiting fullscreen");
+                    toggleFullscreen();
+                }
+            });
+        });
     </script>
-
     <script src="../static/script.js"></script>
+    <!-- Add this before the closing </body> tag -->
+    <script>
+        // Don't define toggleFullscreen() here - let script.js handle it
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listeners to ensure the fullscreen button works
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Call the toggleFullscreen function from script.js
+                    toggleFullscreen();
+                });
+            }
+            
+            // Make sure container is properly identified for the script.js function
+            const mainContainer = document.querySelector('.container.mx-auto');
+            if (mainContainer) {
+                mainContainer.classList.add('max-w-5xl');
+            }
+        });
+    </script>
 </body>
 </html>

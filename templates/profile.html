@@ -3,46 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
+    <title>StudyBuddy - Profile</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .form-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+        }
+        .profile-header {
+            background-image: url('https://via.placeholder.com/1000x300/4F46E5/FFFFFF?text=.'); 
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div class="absolute top-5 left-5 flex items-center">
-        <a href="/" class="w-12 h-12 rounded-full border-2 border-blue-500 bg-gray-200 flex items-center justify-center text-gray-800 font-semibold hover:scale-110 transition-transform shadow-md">🏠</a>
-    </div>
-    <div class="bg-white p-8 rounded-lg shadow-md w-96">
-        <h2 class="text-2xl font-bold text-gray-800 text-center">Profile</h2>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="{{ url_for('home') }}" class="flex items-center">
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-600 text-2xl font-bold">StudyBuddy</span>
+            </a>
+            <div class="space-x-4">
+                <a href="{{ url_for('home') }}" class="text-gray-700 hover:text-blue-600 transition">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
 
-        <form action="{{ url_for('profile') }}" method="POST" class="mt-4">
-            <label class="block text-gray-700 font-bold mb-1">Name:</label>
-            <input type="text" name="name" value="{{ user.name or '' }}" required class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Profile Header -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden max-w-2xl mx-auto mb-8">
+            <div class="profile-header h-32 relative">
+                <div class="absolute -bottom-12 left-8">
+                    <div class="w-24 h-24 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full border-4 border-white flex items-center justify-center text-white text-3xl font-bold">
+                        {{ user.name[0] | upper }}
+                    </div>
+                </div>
+            </div>
+            <div class="pt-16 pb-8 px-8">
+                <h1 class="text-2xl font-bold text-gray-800">{{ user.name or 'Complete Your Profile' }}</h1>
+                <p class="text-gray-600">
+                    {% if user.college %}{{ user.college }} • {% endif %}
+                    {% if user.current_year %}{{ user.current_year }} • {% endif %}
+                    {% if user.branch %}{{ user.branch }}{% endif %}
+                </p>
+            </div>
+        </div>
 
-            <label class="block text-gray-700 font-bold mt-2">Roll No:</label>
-            <input type="text" name="roll_no" value="{{ user.roll_no or '' }}" required class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300">
+        <!-- Profile Form -->
+        <div class="bg-white p-8 rounded-xl shadow-md max-w-2xl mx-auto">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-user-edit mr-2 text-blue-500"></i> Edit Your Profile
+            </h2>
 
-            <label class="block text-gray-700 font-bold mt-2">Date of Birth:</label>
-            <input type="date" name="dob" value="{{ user.dob or '' }}" required class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300">
+            <form action="{{ url_for('profile') }}" method="POST">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" for="name">
+                            <i class="fas fa-user text-blue-500 mr-2"></i>Name
+                        </label>
+                        <input type="text" id="name" name="name" value="{{ user.name or '' }}" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
 
-            <label class="block text-gray-700 font-bold mt-2">Current Year:</label>
-            <select name="current_year" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300">
-                <option value="1st Year" {% if user.current_year == '1st Year' %} selected {% endif %}>1st Year</option>
-                <option value="2nd Year" {% if user.current_year == '2nd Year' %} selected {% endif %}>2nd Year</option>
-                <option value="3rd Year" {% if user.current_year == '3rd Year' %} selected {% endif %}>3rd Year</option>
-                <option value="4th Year" {% if user.current_year == '4th Year' %} selected {% endif %}>4th Year</option>
-            </select>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" for="roll_no">
+                            <i class="fas fa-id-card text-blue-500 mr-2"></i>Roll Number
+                        </label>
+                        <input type="text" id="roll_no" name="roll_no" value="{{ user.roll_no or '' }}" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
 
-            <label class="block text-gray-700 font-bold mt-2">Branch:</label>
-            <select name="branch" class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300">
-                <option value="CSE" {% if user.branch == 'CSE' %} selected {% endif %}>Computer Science</option>
-            </select>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" for="dob">
+                            <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>Date of Birth
+                        </label>
+                        <input type="date" id="dob" name="dob" value="{{ user.dob or '' }}" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
 
-            <label class="block text-gray-700 font-bold mt-2">College:</label>
-            <input type="text" name="college" value="{{ user.college or '' }}" required class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-300">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" for="current_year">
+                            <i class="fas fa-graduation-cap text-blue-500 mr-2"></i>Current Year
+                        </label>
+                        <div class="relative">
+                            <select id="current_year" name="current_year" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none">
+                                <option value="1st Year" {% if user.current_year == '1st Year' %} selected {% endif %}>1st Year</option>
+                                <option value="2nd Year" {% if user.current_year == '2nd Year' %} selected {% endif %}>2nd Year</option>
+                                <option value="3rd Year" {% if user.current_year == '3rd Year' %} selected {% endif %}>3rd Year</option>
+                                <option value="4th Year" {% if user.current_year == '4th Year' %} selected {% endif %}>4th Year</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
 
-            <button type="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg w-full">Save Profile</button>
-        </form>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" for="branch">
+                            <i class="fas fa-code-branch text-blue-500 mr-2"></i>Branch
+                        </label>
+                        <div class="relative">
+                            <select id="branch" name="branch" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none">
+                                <option value="CSE" {% if user.branch == 'CSE' %} selected {% endif %}>Computer Science</option>
+                                <option value="IT" {% if user.branch == 'IT' %} selected {% endif %}>Information Technology</option>
+                                <option value="ECE" {% if user.branch == 'ECE' %} selected {% endif %}>Electronics & Communication</option>
+                                <option value="EEE" {% if user.branch == 'EEE' %} selected {% endif %}>Electrical Engineering</option>
+                                <option value="ME" {% if user.branch == 'ME' %} selected {% endif %}>Mechanical Engineering</option>
+                                <option value="CE" {% if user.branch == 'CE' %} selected {% endif %}>Civil Engineering</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
 
-        <a href="{{ url_for('logout') }}" class="mt-4 block bg-red-600 text-white text-center py-2 rounded-lg">Logout</a>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2" for="college">
+                            <i class="fas fa-university text-blue-500 mr-2"></i>College
+                        </label>
+                        <input type="text" id="college" name="college" value="{{ user.college or '' }}" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="mt-8 flex flex-col md:flex-row gap-4">
+                    <button type="submit" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition duration-300 font-medium flex-1 flex items-center justify-center">
+                        <i class="fas fa-save mr-2"></i> Save Profile
+                    </button>
+                    
+                    <a href="{{ url_for('home') }}" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition duration-300 font-medium flex items-center justify-center">
+                        <i class="fas fa-times mr-2"></i> Cancel
+                    </a>
+                    
+                    <a href="{{ url_for('logout') }}" class="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition duration-300 font-medium flex items-center justify-center">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 </body>
 </html>
