@@ -82,3 +82,45 @@ button:hover {
     max-width: 100% !important;
     width: 100% !important;
 }
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+.form-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease;
+}
+
+.message {
+    width: 100%;
+    position: relative;
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}
+.message .success {
+    font-size: 16px;
+    color: #10b981;
+    position: absolute;
+    animation: buttons .3s linear;
+    display: none;
+    font-weight: 500;
+}
+.message .danger {
+    font-size: 16px;
+    color: #ef4444;
+    position: absolute;
+    transition: .3s;
+    animation: buttons .3s linear;
+    display: none;
+    font-weight: 500;
+}
+@keyframes buttons {
+    0% { transform: scale(0.1); }
+    50% { transform: scale(0.5); }
+    100% { transform: scale(1); }
+}

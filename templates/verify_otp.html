@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP - StudyBuddy</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Use your existing styles */
+        .message {
+            width: 100%;
+            position: relative;
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+        }
+        .message .success {
+            font-size: 16px;
+            color: #10b981;
+            position: absolute;
+            animation: buttons .3s linear;
+            display: none;
+            font-weight: 500;
+        }
+        .message .danger {
+            font-size: 16px;
+            color: #ef4444;
+            position: absolute;
+            transition: .3s;
+            animation: buttons .3s linear;
+            display: none;
+            font-weight: 500;
+        }
+        
+        /* OTP input styling */
+        .otp-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .otp-input {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 24px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .otp-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="flex items-center justify-center min-h-screen p-6">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border-t-4 border-blue-600">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-2">Verify Your Email</h2>
+            <p class="text-gray-500 text-center mb-6">
+                We've sent a 6-digit verification code to 
+                <span class="font-medium">{{ session.get('otp_email') }}</span>
+            </p>
+
+            <form method="POST" action="/verify-otp" class="mt-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2" for="otp">
+                    Enter Verification Code
+                </label>
+                
+                <input type="text" 
+                       id="otp" 
+                       name="otp" 
+                       maxlength="6" 
+                       required
+                       class="form-input w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-medium tracking-widest"
+                       placeholder="######">
+                
+                <button type="submit" class="w-full mt-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition duration-300 font-medium">
+                    Verify Code
+                </button>
+                
+                <div class="message mt-4">
+                    <div class="success" id="success">Verification successful!</div>
+                    <div class="danger" id="danger">Invalid verification code!</div>
+                </div>
+                <p class="text-xs text-gray-400 text-center mt-2">Can't find the email? Please check your spam folder.</p>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">Didn't receive the code? 
+                    <a href="#" id="resend-otp" class="text-blue-600 font-medium hover:underline">Resend Code</a>
+                </p>
+                <p class="text-sm text-gray-500 mt-2">
+                    You can request a new code in <span id="countdown">02:00</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Display flash messages
+        document.addEventListener('DOMContentLoaded', function() {
+            const success = document.getElementById('success');
+            const danger = document.getElementById('danger');
+            
+            // Countdown timer for resending OTP
+            let timeLeft = 120; // 2 minutes
+            const countdownEl = document.getElementById('countdown');
+            const resendBtn = document.getElementById('resend-otp');
+            
+            resendBtn.style.pointerEvents = 'none';
+            resendBtn.style.opacity = '0.5';
+            
+            const timer = setInterval(() => {
+                const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                const seconds = (timeLeft % 60).toString().padStart(2, '0');
+                
+                countdownEl.textContent = `${minutes}:${seconds}`;
+                timeLeft--;
+                
+                if (timeLeft < 0) {
+                    clearInterval(timer);
+                    resendBtn.style.pointerEvents = 'auto';
+                    resendBtn.style.opacity = '1';
+                    countdownEl.textContent = "00:00";
+                }
+            }, 1000);
+            
+            // Handle resend OTP
+            resendBtn.addEventListener('click', function(e) {
+                if (timeLeft <= 0) {
+                    e.preventDefault();
+                    
+                    // Submit the email form again
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/send-otp';
+                    
+                    const emailInput = document.createElement('input');
+                    emailInput.type = 'hidden';
+                    emailInput.name = 'email';
+                    emailInput.value = "{{ session.get('otp_email') }}";
+                    
+                    form.appendChild(emailInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

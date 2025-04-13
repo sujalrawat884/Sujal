@@ -3,15 +3,16 @@ from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import os
+import requests
+import smtplib
+import random
+import string
 from models import db, User
 import Syllabus.sub as sub  # Use this instead of subjects
 import resources  # Use this instead of resources
 from resources.resources import get_drive_link  # Import the function to get drive links
 from chatbot.chat import get_chatbot_response
-import requests
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -27,16 +28,12 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database with the app
 db.init_app(app)
 
-# Add this after db.init_app(app)
-
 # Initialize syllabus data
 @app.before_request
 def initialize_syllabus():
     with app.app_context():
         sub.subjects_by_year, sub.units_by_subject = sub.load_data_from_db()
         print("Syllabus data loaded successfully!")
-
-# Add after db.init_app(app)
 
 # Initialize resource data
 @app.before_request
@@ -84,7 +81,7 @@ def login():
                 return redirect('/')
             else:
                 # Authentication failed
-                flash('Invalid email or password!', 'danger')
+                return redirect('/login?error=invalid')  # Redirect back with error parameter
 
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')
@@ -94,14 +91,158 @@ def login():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        password = request.form['password']
+        email = request.form.get('email')
+        password = request.form.get('password')
+        name = request.form.get('name')
+        
+        # Store user info in session temporarily
+        session['signup_name'] = name
+        session['signup_email'] = email
+        session['signup_password'] = password  # In production, hash this immediately
+        send_otp()  # Call the function to send OTP
+        # Redirect to OTP sending - CHANGE HERE
+        return render_template('verify_otp.html')  # Changed from /verify-otp to /send-otp
+        
+    return render_template('signup.html')
 
-        try:
+
+# Generate a random 6-digit OTP
+def generate_otp():
+    return ''.join(random.choices(string.digits, k=6))
+
+
+# Routes for OTP verification flow
+@app.route('/send-otp', methods=['GET', 'POST'])
+def send_otp():
+    email = session.get('signup_email')
+    name = session.get('signup_name')
+    
+    # Redirect if no email in session
+    if not email or not name:
+        flash("Please complete the signup form first", "error")
+        return redirect('/signup')
+
+    # Generate OTP
+    otp = generate_otp()
+    
+    # Store OTP in session with timestamp
+    session['otp'] = otp
+    session['otp_email'] = email
+    session['otp_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(email)
+    # Send OTP
+    try:
+        send_otp_email(name, email, otp)
+        print(f"OTP sent to {email}: {otp}")  # Debugging line
+        return redirect(url_for('verify_otp'))
+    except Exception as e:
+        flash(f"Error sending email: {e}", "error")
+        return redirect(url_for('signup'))
+        
+# Update the existing send_otp_email function to support password reset
+def send_otp_email(name, email, otp, is_password_reset=False):
+    try:
+        api_key = os.getenv('MAILJET_API_KEY')
+        api_secret = os.getenv('MAILJET_API_SECRET')
+        from_email = os.getenv('MAILJET_FROM_EMAIL', 'noreply@studybuddy.com')
+        from_name = os.getenv('MAILJET_FROM_NAME', 'StudyBuddy')
+        
+        if not api_key or not api_secret:
+            raise Exception("Mailjet API credentials not found in environment variables")
+        
+        url = "https://api.mailjet.com/v3.1/send"
+        
+        # Change subject and content based on email type
+        if is_password_reset:
+            subject = "StudyBuddy - Password Reset Code"
+            text_content = f"Hi {name},\n\nYour password reset code is: {otp}\n\nThis code will expire in 10 minutes.\n\nRegards,\nStudyBuddy Team"
+            html_content = f"<h3>Hi {name},</h3><p>Your password reset code is: <strong>{otp}</strong></p><p>This code will expire in 10 minutes.</p><p>If you didn't request this, please ignore this email.</p><p>Regards,<br>StudyBuddy Team</p>"
+        else:
+            subject = "StudyBuddy - Email Verification Code"
+            text_content = f"Hi {name},\n\nYour verification code is: {otp}\n\nThis code will expire in 10 minutes.\n\nRegards,\nStudyBuddy Team"
+            html_content = f"<h3>Hi {name},</h3><p>Your verification code is: <strong>{otp}</strong></p><p>This code will expire in 10 minutes.</p><p>Regards,<br>StudyBuddy Team</p>"
+        
+        payload = {
+            "Messages": [
+                {
+                    "From": {
+                        "Email": from_email,
+                        "Name": from_name
+                    },
+                    "To": [
+                        {
+                            "Email": email,
+                            "Name": name
+                        }
+                    ],
+                    "Subject": subject,
+                    "TextPart": text_content,
+                    "HTMLPart": html_content
+                }
+            ]
+        }
+        
+        print(f"Sending {'password reset' if is_password_reset else 'verification'} email to {email}")
+        response = requests.post(
+            url,
+            auth=(api_key, api_secret),
+            json=payload
+        )
+        
+        print(f"Mailjet response: {response.status_code}, {response.text}")
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"Mailjet error: {str(e)}")
+        raise e
+
+
+@app.route('/verify-otp', methods=['GET', 'POST'])
+def verify_otp():
+    if request.method == 'POST':
+        entered_otp = request.form.get('otp')
+        stored_otp = session.get('otp')
+        otp_time = session.get('otp_time')
+        
+        # Check if OTP exists
+        if not stored_otp or not otp_time:
+            flash("OTP expired or not found. Please request a new one.", "error")
+            return redirect(url_for('signup'))
+        
+        # Check if OTP is expired (10 minutes)
+        otp_datetime = datetime.strptime(otp_time, '%Y-%m-%d %H:%M:%S')
+        if datetime.now() - otp_datetime > timedelta(minutes=10):
+            flash("OTP has expired. Please request a new one.", "error")
+            return redirect(url_for('signup'))
+        
+        # Check if OTP matches
+        if entered_otp == stored_otp:
+            # Mark email as verified
+            session['email_verified'] = True
+            flash("Email verified successfully!", "success")
+            return redirect(url_for('complete_signup'))
+        else:
+            flash("Invalid OTP. Please try again.", "error")
+    
+    return render_template('verify_otp.html')
+
+
+@app.route('/complete-signup')
+def complete_signup():
+    # Check if email is verified
+    if not session.get('email_verified'):
+        flash('Please verify your email first', 'error')
+        return redirect(url_for('signup'))
+    
+    # Get user info from session
+    name = session.get('signup_name')
+    email = session.get('signup_email')
+    password = session.get('signup_password')
+    
+    try:
             # Check if user already exists
             existing_user = User.query.filter_by(email=email).first()
-            if existing_user:
+            if (existing_user):
                 flash('Email already registered!', 'danger')
                 return redirect('/signup')
                 
@@ -109,7 +250,7 @@ def signup():
             new_user = User(
                 name=name,
                 email=email,
-                email_verified=False
+                email_verified=True
             )
             new_user.set_password(password)
             
@@ -117,13 +258,22 @@ def signup():
             db.session.add(new_user)
             db.session.commit()
 
-            flash('Account created! Please login.', 'success')
-            return redirect('/login')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error: {str(e)}', 'danger')
+            # Clear sensitive session data
+            session.pop('signup_name', None)
+            session.pop('signup_email', None) 
+            session.pop('signup_password', None)
+            session.pop('otp', None)
+            session.pop('otp_time', None)
+            
+            flash('Account created successfully!', 'success')
+            return redirect(url_for('login'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+        return redirect(url_for('signup'))
 
-    return render_template('signup.html')
+    
+    
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -229,43 +379,6 @@ def get_units(subject):
     else:
         return jsonify({"error": "Subject not found"}), 404
 
-# # Add a new route to get resource content
-# @app.route('/get_resource_content/<resource_type>/<subject>/<unit>')
-# def get_resource_content(resource_type, subject, unit):
-#     # Convert to codes if full names were provided
-#     subject_code = sub.get_subject_code(subject)
-    
-#     # Extract unit number (e.g., "Unit 1" -> "U1")
-#     unit_code = None
-#     if unit.startswith("Unit "):
-#         unit_num = unit.split(" ")[1]
-#         unit_code = f"U{unit_num}"
-    
-#     # Generate path for resource
-#     resource_path = f"resources/{resource_type}/{subject_code}/{unit_code}"
-    
-#     # This is a placeholder - in a real app, you would check if the resource exists
-#     # and return its URL or content
-#     return jsonify({
-#         "path": resource_path,
-#         "exists": False,  # You would check this in a real implementation
-#         "message": f"Resource for {resource_type} - {subject} - {unit} would be found at {resource_path}"
-#     })
-
-# @app.route('/get_youtube_url/<subject>/<unit>')
-# def get_youtube_url(subject, unit):
-#     from youtube.youtube import get_youtube_url
-#     year = session['user'].get('year', '1Y')  # Default to 1Y if not set
-#     subject_code = subject_codes(subject)
-#     print(f"year: {year}, subject_code: {subject_code}, unit: {unit}")  # Debugging line
-#     url = get_youtube_url(year,subject_code, unit)
-#     if url:
-#         # Extract video ID for embedding
-#         video_id = url.split('v=')[1] if 'v=' in url else None
-#         return jsonify({"url": url, "video_id": video_id})
-#     else:
-#         return jsonify({"error": "Video not found"}), 404
-
 @app.route('/chat_message', methods=['POST'])
 def chat_message():
     if "user" not in session:
@@ -289,7 +402,7 @@ def chat_message():
         print(f"Error generating response: {e}")
         return jsonify({"response": "Sorry, I encountered an error. Please try again later."})
 
-# Add this route to clear chat history
+# route to clear chat history
 @app.route('/clear_chat', methods=['POST'])
 def clear_chat():
     if "user" not in session:
@@ -373,6 +486,95 @@ def logout():
     session.pop('user', None)
     flash('Logged out successfully!', 'success')
     return redirect('/')
+
+@app.route('/test-email')
+def test_email():
+    try:
+        send_otp_email("Test User", "sujalrawat884@gmail.com", "123456")
+        return "Email sent successfully! Check logs for details."
+    except Exception as e:
+        return f"Email sending failed: {str(e)}"
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        
+        # Check if user exists
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash('No account found with that email address.', 'error')
+            return render_template('forgot_password.html')
+            
+        # Generate OTP
+        otp = generate_otp()
+        
+        # Store OTP in session with timestamp
+        session['reset_otp'] = otp
+        session['reset_email'] = email
+        session['reset_otp_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Send OTP
+        try:
+            send_otp_email(user.name, email, otp, is_password_reset=True)
+            flash('Password reset code has been sent to your email.', 'success')
+            return redirect(url_for('reset_password'))
+        except Exception as e:
+            flash(f"Error sending email: {str(e)}", "error")
+            return render_template('forgot_password.html')
+            
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        entered_otp = request.form.get('otp')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        stored_otp = session.get('reset_otp')
+        otp_time = session.get('reset_otp_time')
+        email = session.get('reset_email')
+        
+        # Check if OTP exists
+        if not stored_otp or not otp_time or not email:
+            flash("Password reset session expired. Please try again.", "error")
+            return redirect(url_for('forgot_password'))
+        
+        # Check if OTP is expired (10 minutes)
+        otp_datetime = datetime.strptime(otp_time, '%Y-%m-%d %H:%M:%S')
+        if datetime.now() - otp_datetime > timedelta(minutes=10):
+            flash("Verification code has expired. Please request a new one.", "error")
+            return redirect(url_for('forgot_password'))
+        
+        # Check if passwords match
+        if new_password != confirm_password:
+            flash("Passwords don't match.", "error")
+            return render_template('reset_password.html')
+            
+        # Check if OTP matches
+        if entered_otp == stored_otp:
+            # Find user and update password
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.set_password(new_password)
+                db.session.commit()
+                
+                # Clear session data
+                session.pop('reset_otp', None)
+                session.pop('reset_email', None)
+                session.pop('reset_otp_time', None)
+                
+                flash("Password has been reset successfully! Please login with your new password.", "success")
+                return redirect(url_for('login'))
+            else:
+                flash("User not found.", "error")
+                return redirect(url_for('forgot_password'))
+        else:
+            flash("Invalid verification code. Please try again.", "error")
+    
+    return render_template('reset_password.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

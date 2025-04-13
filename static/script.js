@@ -1,3 +1,58 @@
+// Toggle password visibility
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.querySelector('.toggle-password');
+    const passwordInput = document.querySelector('#password');
+    
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Toggle icon
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    }
+});
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    const success = document.getElementById('success');
+    const danger = document.getElementById('danger');
+    
+    // Handle error parameter from Flask
+    if (errorParam === 'invalid') {
+        danger.style.display = 'block';
+        
+        setTimeout(() => {
+            danger.style.display = 'none';
+        }, 4000);
+    }
+
+
+    // Handle form submission
+    const loginForm = document.querySelector('form[action="/login"]');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // Only check for empty fields - don't show success message yet
+            if (email === '' || password === '') {
+                e.preventDefault(); // Prevent form submission
+                danger.textContent = "Fields can't be empty!";
+                danger.style.display = 'block';
+                
+                setTimeout(() => {
+                    danger.style.display = 'none';
+                }, 4000);
+            }
+            // Let the server handle validation and success state
+            // Don't show success message here
+        });
+    }
+});
 document.addEventListener("DOMContentLoaded", function () {
     console.log("✅ DOM is fully loaded!");
 
@@ -659,3 +714,5 @@ function handleFullscreenChange() {
         document.getElementById('chat-container').classList.remove('h-[70vh]');
     }
 }
+
+
