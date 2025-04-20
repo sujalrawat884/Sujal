@@ -95,16 +95,21 @@ def signup():
         password = request.form.get('password')
         name = request.form.get('name')
         
+        # Check if user already exists BEFORE proceeding with OTP
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash('Email already registered! Please login or use a different email.', 'danger')
+            return redirect(url_for('signup'))
+        
         # Store user info in session temporarily
         session['signup_name'] = name
         session['signup_email'] = email
         session['signup_password'] = password  # In production, hash this immediately
-        send_otp()  # Call the function to send OTP
-        # Redirect to OTP sending - CHANGE HERE
-        return render_template('verify_otp.html')  # Changed from /verify-otp to /send-otp
+        
+        # Redirect to send-otp route instead of calling the function directly
+        return redirect(url_for('send_otp'))
         
     return render_template('signup.html')
-
 
 # Generate a random 6-digit OTP
 def generate_otp():
@@ -444,35 +449,12 @@ def send_feedback():
     message = request.form.get('message')
     user_email = request.form.get('email')
     
-    # Fix: Use session data instead of current_user
+    # Use session data instead of current_user
     user_name = session['user']['name'] if 'user' in session else "Anonymous"
     
-    # Use same email for both sender and receiver
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    receiver_email = sender_email  # Use the same email as both sender and receiver
-    password = os.getenv("EMAIL_PASSWORD")
-    
-    # Create message
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = f"Feedback: {subject}"
-    
-    body = f"""
-    Feedback from: {user_name} ({user_email})
-    
-    {message}
-    """
-    
-    msg.attach(MIMEText(body, 'plain'))
-    
     try:
-        # Connect to server and send email
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, password)
-        server.send_message(msg)
-        server.quit()
+        # Send feedback using Mailjet
+        send_feedback_email(user_name, user_email, subject, message)
         flash("Thank you for your feedback!", "success")
     except Exception as e:
         flash(f"Failed to send feedback: {str(e)}", "error")
@@ -480,6 +462,60 @@ def send_feedback():
     
     return redirect(url_for('home'))
 
+def send_feedback_email(user_name, user_email, subject, message):
+    """Send feedback email using Mailjet API"""
+    try:
+        api_key = os.getenv('MAILJET_API_KEY')
+        api_secret = os.getenv('MAILJET_API_SECRET')
+        from_email = os.getenv('MAILJET_FROM_EMAIL', 'noreply@studybuddy.com')
+        from_name = os.getenv('MAILJET_FROM_NAME', 'StudyBuddy')
+        to_email = os.getenv('MAILJET_FROM_EMAIL')  # Send to same email as sender
+        
+        if not api_key or not api_secret:
+            raise Exception("Mailjet API credentials not found in environment variables")
+        
+        url = "https://api.mailjet.com/v3.1/send"
+        
+        # Create email content
+        text_content = f"Feedback from: {user_name} ({user_email})\n\n{message}"
+        html_content = f"""
+        <h3>Feedback from: {user_name} ({user_email})</h3>
+        <p>{message}</p>
+        """
+        
+        payload = {
+            "Messages": [
+                {
+                    "From": {
+                        "Email": from_email,
+                        "Name": from_name
+                    },
+                    "To": [
+                        {
+                            "Email": to_email,
+                            "Name": "StudyBuddy Admin"
+                        }
+                    ],
+                    "Subject": f"Feedback: {subject}",
+                    "TextPart": text_content,
+                    "HTMLPart": html_content
+                }
+            ]
+        }
+        
+        print(f"Sending feedback email from {user_email}")
+        response = requests.post(
+            url,
+            auth=(api_key, api_secret),
+            json=payload
+        )
+        
+        print(f"Mailjet response: {response.status_code}, {response.text}")
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"Mailjet error: {str(e)}")
+        raise e
 
 @app.route('/logout')
 def logout():

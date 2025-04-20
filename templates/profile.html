@@ -76,8 +76,9 @@
                         <label class="block text-gray-700 font-medium mb-2" for="roll_no">
                             <i class="fas fa-id-card text-blue-500 mr-2"></i>Roll Number
                         </label>
-                        <input type="text" id="roll_no" name="roll_no" value="{{ user.roll_no or '' }}" required 
-                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <input type="number" id="roll_no" name="roll_no" value="{{ user.roll_no or '' }}" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                     </div>
 
                     <div>
@@ -151,5 +152,32 @@
             </form>
         </div>
     </div>
+
+    <script>
+        // Set maximum date to 18 years ago from today
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const minAgeDate = new Date(
+                today.getFullYear() - 18,
+                today.getMonth(),
+                today.getDate()
+            );
+            
+            const dobInput = document.getElementById('dob');
+            const maxDate = minAgeDate.toISOString().split('T')[0];
+            dobInput.setAttribute('max', maxDate);
+            
+            // Also validate when form is submitted
+            const form = dobInput.form;
+            form.addEventListener('submit', function(e) {
+                const selectedDate = new Date(dobInput.value);
+                if (selectedDate > minAgeDate) {
+                    e.preventDefault();
+                    alert('You must be at least 18 years old to use this service.');
+                    dobInput.focus();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
