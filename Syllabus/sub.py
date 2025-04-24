@@ -116,28 +116,38 @@ def load_data_from_db():
     if _subjects_by_year_cache and _units_by_subject_cache:
         return _subjects_by_year_cache, _units_by_subject_cache
     
-    subjects_by_year = {
-        "1": [],
-        "2": [],
-        "3": [],
-        "4": []
-    }
+    subjects_by_year = {"1": [], "2": [], "3": [], "4": []}
+    units_by_subject = {}
     
-    units_by_subject = {}  # Maps subject codes to their units with topics
+    # Load subjects
+    subjects = Subject.query.all()
+    
+    # Organize subjects by year
+    for subject in subjects:
+        # Handle different year formats safely
+        year_val = subject.year
+        
+        # Convert to string if it's an integer
+        if isinstance(year_val, int):
+            year = str(year_val)
+        elif isinstance(year_val, str):
+            # Extract the first digit if it's a string like "1Y" or "Year 1"
+            year = ''.join(filter(str.isdigit, year_val[:2]))
+        else:
+            # Default if the year is None or another type
+            year = "1"
+        
+        # Add subject to the corresponding year
+        if year in subjects_by_year:
+            subjects_by_year[year].append(subject.code)
+        else:
+            # Default to year 1 if invalid
+            subjects_by_year["1"].append(subject.code)
     
     try:
         # Use SQLAlchemy to query the database
         from flask import current_app
         with current_app.app_context():
-            # Get all subjects
-            subjects = Subject.query.all()
-            
-            # Organize subjects by year
-            for subject in subjects:
-                year = subject.year[0] if isinstance(subject.year, str) and len(subject.year) > 0 else "1"
-                if year in subjects_by_year:
-                    subjects_by_year[year].append(subject.code)
-            
             # Get all units
             units = Unit.query.all()
             
@@ -198,21 +208,19 @@ def get_subjects_by_year(year):
     Get list of subjects for a specific year
     
     Args:
-        year: Year number (1, 2, 3, 4) or display name (1st Year, 2nd Year)
+        year: Year number (1, 2, 3, 4) or display name (1Y, 2Y, etc.)
     """
     # Make sure data is loaded
     global subjects_by_year, units_by_subject
     if not subjects_by_year:
         subjects_by_year, units_by_subject = load_data_from_db()
-        
-    # Convert display name to number if needed
-    if year in year_display.values():
-        for num, name in year_display.items():
-            if name == year:
-                year = num
-                break
     
-    year_str = str(year).replace('Y', '')
+    # Normalize year input to just the number
+    year_str = ''.join(filter(str.isdigit, str(year)[:2]))
+    
+    # Debug output to see what's being requested and what's available
+    print(f"Requested year: {year}, normalized to {year_str}")
+    print(f"Available years and subject counts: {[(y, len(s)) for y, s in subjects_by_year.items()]}")
     
     # Get subject codes for the given year
     subject_codes_list = subjects_by_year.get(year_str, [])

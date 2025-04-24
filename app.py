@@ -21,8 +21,14 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
-# MySQL Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL", "mysql://username:password@localhost/sujal_db")
+
+# Database Configuration - Updated for Heroku PostgreSQL
+database_url = os.getenv("DATABASE_URL")
+# Fix for Heroku PostgreSQL URLs starting with "postgres://"
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database with the app
@@ -44,8 +50,18 @@ def initialize_resources():
         print("Resource data loaded successfully!")
 
 # Configure session
-app.config['SESSION_TYPE'] = 'filesystem'
+if os.getenv("ON_HEROKU", "0") == "1":
+    # Use database for session storage on Heroku
+    app.config['SESSION_TYPE'] = 'sqlalchemy'  
+    app.config['SESSION_SQLALCHEMY'] = db
+else:
+    # Use filesystem for local development
+    app.config['SESSION_TYPE'] = 'filesystem'
+
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
 Session(app)
+
 
 # Create database tables
 with app.app_context():
