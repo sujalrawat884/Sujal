@@ -353,7 +353,7 @@ function loadNotes() {
     document.getElementById("content-area").innerHTML = `
         <h3 class="text-lg font-bold text-gray-800">Select Resource Type</h3>
         <div class="mt-2 grid grid-cols-2 gap-3">
-            <button onclick="loadResourceContent('Quantum')" class="px-4 py-3 bg-purple-500 text-white rounded-lg shadow-md hover:bg-purple-600 transition">1. Quatum</button>
+            <button onclick="loadResourceContent('Quantum')" class="px-4 py-3 bg-purple-500 text-white rounded-lg shadow-md hover:bg-purple-600 transition">1. Quantum</button>
             <button onclick="loadResourceContent('PYQ')" class="px-4 py-3 bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition">2. PYQ</button>
             <button onclick="loadResourceContent('Sessional Paper')" class="px-4 py-3 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition">3. Sessional Paper</button>
             <button onclick="loadResourceContent('Detailed Notes')" class="px-4 py-3 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition">4. Detailed Notes</button>
