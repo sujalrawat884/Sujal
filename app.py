@@ -165,7 +165,7 @@ def send_otp_email(name, email, otp, is_password_reset=False):
     try:
         api_key = os.getenv('MAILJET_API_KEY')
         api_secret = os.getenv('MAILJET_API_SECRET')
-        from_email = os.getenv('MAILJET_FROM_EMAIL', 'noreply@studybuddy.com')
+        from_email = 'noreply@studybuddy.com'
         from_name = os.getenv('MAILJET_FROM_NAME', 'StudyBuddy')
         
         if not api_key or not api_secret:
