@@ -165,8 +165,8 @@ def send_otp_email(name, email, otp, is_password_reset=False):
     try:
         api_key = os.getenv('MAILJET_API_KEY')
         api_secret = os.getenv('MAILJET_API_SECRET')
-        from_email = 'noreply@studybuddy.com'
-        from_name = os.getenv('MAILJET_FROM_NAME', 'StudyBuddy')
+        from_email = os.getenv('MAILJET_FROM_EMAIL')
+        from_name = os.getenv('MAILJET_FROM_NAME')
         
         if not api_key or not api_secret:
             raise Exception("Mailjet API credentials not found in environment variables")
@@ -483,8 +483,8 @@ def send_feedback_email(user_name, user_email, subject, message):
     try:
         api_key = os.getenv('MAILJET_API_KEY')
         api_secret = os.getenv('MAILJET_API_SECRET')
-        from_email = os.getenv('MAILJET_FROM_EMAIL', 'noreply@studybuddy.com')
-        from_name = os.getenv('MAILJET_FROM_NAME', 'StudyBuddy')
+        from_email = os.getenv('MAILJET_FROM_EMAIL')
+        from_name = os.getenv('MAILJET_FROM_NAME')
         to_email = os.getenv('MAILJET_FROM_EMAIL')  # Send to same email as sender
         
         if not api_key or not api_secret:
@@ -539,13 +539,6 @@ def logout():
     flash('Logged out successfully!', 'success')
     return redirect('/')
 
-@app.route('/test-email')
-def test_email():
-    try:
-        send_otp_email("Test User", "sujalrawat884@gmail.com", "123456")
-        return "Email sent successfully! Check logs for details."
-    except Exception as e:
-        return f"Email sending failed: {str(e)}"
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
