@@ -400,7 +400,7 @@ function loadResourceContent(resourceType) {
                             </div>
                         </div>
                         <div class="mt-4">
-                            <a href="${googleDriveLink}" target="_blank"><img decoding="async" class="mx-auto" src="https://www.abesit.in/wp-content/plugins/wp-docs/img/filetype-icons/pdf.png"></a>
+                            <a href="${googleDriveLink}" target="_blank"><img decoding="async" class="mx-auto" src="https://www.nicepng.com/png/full/196-1963029_adobe-pdf-file-icon-logo-vector-pdf-file.png"></a>
                         </div>
                         <p class="mt-4 text-sm text-gray-500">Note: If the document doesn't load, it will update soon.</p>
                     </div>
