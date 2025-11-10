@@ -29,7 +29,7 @@ def get_chatbot_response(subject, unit, question, user_id=None):
     chat_histories[conversation_key].append(HumanMessage(content=question))
     
     # Initialize the language model
-    llm = ChatGoogleGenerativeAI(model='gemini-1.5-flash', temperature=0.7)
+    llm = ChatGoogleGenerativeAI(model='gemini-2.5-flash', temperature=0.7)
     
     try:
         # Get response from the model
